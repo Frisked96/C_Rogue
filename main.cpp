@@ -19,9 +19,9 @@ public:
       cout << "\n";
     }
   }
-  void set_tile(int h, int w, char c) { 
-	  if(h>=0 && h<height && w>=0 && w<width){
-		  grid[h][w] = c;
+  void set_tile(int y, int x, char c) { 
+	  if(y>=0 && y<height && x>=0 && x<width){
+		  grid[y][x] = c;
 	  }
   }
 };
