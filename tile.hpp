@@ -6,12 +6,13 @@ struct Tile {
 	// Symbol of tile 
 	char glyph;
 
-	// can walk 
+	// Properties
 	bool is_walkable;
-	bool transparent;
+	bool is_transparent;
 	bool is_explored;
 	std::string name; 
 
+	// Terminal colors 
 	int fg_color;
 	int bg_color;
 
@@ -23,8 +24,8 @@ struct Tile {
 		is_explored(false), fg_color(7), bg_color(0) {}
 
 	// utility 
-	const is_wall() { return !is_walkable && !is_transparent }
-	const is_floor() { return is_walkable && is_transparent}
+	bool is_wall() const { return !is_walkable && !is_transparent; }
+	bool is_floor() const { return is_walkable && is_transparent; }
 };
 	
 

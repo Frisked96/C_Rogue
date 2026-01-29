@@ -2,7 +2,7 @@
 
 // Tile(char sym,string n,bool w, bool t)
 namespace Tiles {
-	const Tile Wall { '#', "Default Wall", False, False};
-	const Tile Floor { '.', "Default  Floor",True, True};
+	const Tile Wall { '#', "Default Wall", false, false};
+	const Tile Floor { '.', "Default  Floor",true, true};
 }
 
