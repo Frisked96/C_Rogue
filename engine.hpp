@@ -1,7 +1,6 @@
 #pragma once
 
 #include "game_map.hpp"
+#include "renderer.hpp"
 
-class Engine {
-private:
-  Game_map game_map;
+
