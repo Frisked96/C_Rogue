@@ -39,6 +39,7 @@
 *.out
 *.app
 roguelike
+a
 
 # Build directories
 build/

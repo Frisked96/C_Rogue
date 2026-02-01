@@ -4,7 +4,7 @@ CXXFLAGS = -std=c++17 -Wall -Wextra
 
 SRCS = main.cpp engine.cpp player.cpp game_map.cpp renderer.cpp input_handler.cpp entity.cpp tile.cpp
 OBJS = $(SRCS:.cpp=.o)
-TARGET = roguelike
+TARGET = a
 
 all: $(TARGET)
 
