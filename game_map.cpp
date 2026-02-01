@@ -22,10 +22,6 @@ void Game_map::set_tile(int x, int y, const Tile& tile) {
 }
 
 bool Game_map::can_walk(int x, int y) const{
-    // Check bounds first
-    if (x < 0 || x >= width || y < 0 || y >= height) {
-        return false;
-    }
     Tile tile = get_tile(x,y);
     return tile.is_walkable;
 }
