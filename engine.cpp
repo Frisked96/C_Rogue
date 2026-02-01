@@ -38,13 +38,13 @@ void Engine::render() {
     }
 
     // 2. Draw player (over map)
-    renderer->set_tile(player->get_pos_x(), player->get_pos_y(), player->get_glyph());
+    renderer->set_tile(player->get_pos().x, player->get_pos().y, player->get_glyph());
 
     // 3. Render to screen
     renderer->draw();
     
     // Print stats/help
-    std::cout << "Player: (" << player->get_pos_x() << ", " << player->get_pos_y() << ")\n";
+    std::cout << "Player: (" << player->get_pos().x << ", " << player->get_pos().y << ")\n";
     std::cout << "Controls: WASD to move, Q to quit.\n";
 }
 
@@ -68,8 +68,8 @@ void Engine::handle_input() {
     }
 
     if (dx != 0 || dy != 0) {
-        int new_x = player->get_pos_x() + dx;
-        int new_y = player->get_pos_y() + dy;
+        int new_x = player->get_pos().x + dx;
+        int new_y = player->get_pos().y + dy;
 
         if (map->can_walk(new_x, new_y)) {
             player->move(dx, dy);

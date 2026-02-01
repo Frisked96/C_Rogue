@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
+#include "point.hpp"
 class Entity {
 private:
-  int pos_x;
-  int pos_y;
+  Point pos;
   int id;
 
   char glyph;
@@ -16,22 +16,22 @@ public:
 
   // getters
   char get_glyph() const { return glyph; }
-  int get_pos_x() const { return pos_x; }
-  int get_pos_y() const { return pos_y; }
+  Point get_pos() const { return pos; }
   bool blocks() const { return blocks_movement; }
   const std::string &get_name() const { return name; }
   int get_id() const { return id; }
 
   // setters
   void set_position(int x, int y) {
-    pos_x = x;
-    pos_y = y;
+    pos.x = x;
+    pos.y = y;
   }
-  void get_glyph(char c) { glyph = c; }
+  void set_position(const Point& p) { pos = p; }
+  void set_glyph(char c) { glyph = c; }
 
   // movement
   void move(int dx, int dy) {
-    pos_x += dx;
-    pos_y += dy;
+    pos.x += dx;
+    pos.y += dy;
   }
 };
