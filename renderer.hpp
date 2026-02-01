@@ -12,7 +12,7 @@ private:
   vector<vector<char>> view_grid;
 
 public:
-  Terminal_renderer(int h, int w);
+  Terminal_renderer(int w, int h);
   void draw();
   void set_tile(int x, int y, char c);
 };

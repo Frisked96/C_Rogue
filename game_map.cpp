@@ -14,14 +14,18 @@ Tile Game_map::get_tile(int x, int y) const {
     if (x >= 0 && x < width && y >= 0 && y< height) {
         return map[y][x];
     }
-    return tiles::Wall;
+    return Tiles::Wall;
 }
 
-void Game_map::set_tile(int w, int h, const Tile& tile) { 
-    if (x >= 0 && x < width && y >= 0 && y<  height) { map[h][w] = tile; }
+void Game_map::set_tile(int x, int y, const Tile& tile) { 
+    if (x >= 0 && x < width && y >= 0 && y < height) { map[y][x] = tile; }
 }
 
 bool Game_map::can_walk(int x, int y) const{
+    // Check bounds first
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+        return false;
+    }
     Tile tile = get_tile(x,y);
     return tile.is_walkable;
 }
@@ -33,7 +37,3 @@ void Game_map::generate() {
         }
     } 
 }
-
-
-
-
