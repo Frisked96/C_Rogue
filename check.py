@@ -1,5 +1,6 @@
 
 """
+WHEN WORKING IN A TERMINAL ENVIRONMENT.
 cppcheck.py - Fast C++ syntax checker similar to cargo check
 Usage: python cppcheck.py [path] [--flags FLAGS]
 """
