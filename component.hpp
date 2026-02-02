@@ -21,7 +21,7 @@ public:
 
   TypeId getTypeId() const override { return getStaticTypeId(); }
 
-  // default clone imp
+  // default clone implimentation
   std::unique_ptr<Component> clone() const override {
     return std::make_unique<T>(*static_cast<const T *>(this));
   }
