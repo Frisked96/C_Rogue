@@ -17,7 +17,7 @@ public:
 // helper for registering component types
 template <typename T> class BaseComponent : public Component {
 public:
-  static TypeId getStaticId() { return std::type_index(typeid(T)); }
+  static TypeId getStaticTypeId() { return std::type_index(typeid(T)); }
 
   TypeId getTypeId() const override { return getStaticTypeId(); }
 

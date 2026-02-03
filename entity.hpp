@@ -1,37 +1,64 @@
 #pragma once
-#include <string>
-#include "point.hpp"
+#include <memory>
+#include <unordered_map>
+#include <typeindex>
+#include "component.hpp"
+
 class Entity {
 private:
-  Point pos;
   int id;
+  std::unordered_map<Component::TypeId, std::unique_ptr<Component>> components;
 
-  char glyph;
-
-  bool blocks_movement;
-  std::string name;
+  static int next_id;
 
 public:
-  Entity(int x, int y, char c, const std::string& n, bool blocks = true);
+  Entity();
 
   // getters
-  char get_glyph() const { return glyph; }
-  Point get_pos() const { return pos; }
-  bool blocks() const { return blocks_movement; }
-  const std::string &get_name() const { return name; }
-  int get_id() const { return id; }
+  int getId() const { return id;}
 
-  // setters
-  void set_position(int x, int y) {
-    pos.x = x;
-    pos.y = y;
+  // component management 
+  template<typename T, typename... Args>
+  T& addComponent(Args&&... args) {
+    auto component = std::make_unique<T>(std::forward<Args>(args)...);
+    auto& ref = *component;
+    components[T::getStaticTypeId()] = std::move(component);
+    return ref;
   }
-  void set_position(const Point& p) { pos = p; }
-  void set_glyph(char c) { glyph = c; }
 
-  // movement
-  void move(int dx, int dy) {
-    pos.x += dx;
-    pos.y += dy;
+  template<typename T>
+  bool hasComponent() const {
+    return components.find(T::getStaticTypeId()) != components.end();
   }
+
+  template<typename T>
+  T* getComponent() {
+    auto it = components.find(T::getStaticTypeId());
+    if (it != components.end()) {
+      return static_cast<T*>(it->second.get());
+    }
+    return nullptr;
+  }
+
+  template<typename T>
+  const T* getComponent() const {
+    auto it = components.find(T::getStaticTypeId());
+    if (it != components.end()) {
+      return static_cast<const T*>(it->second.get());
+    }
+    return nullptr;
+  } 
+
+  template<typename T>
+  void removeComponent() {
+    components.erase(T::getStaticTypeId());
+  }
+
+  // helper methods
+  void setPosition(int x, int y);
+  void move(int dx, int dy);
+  char getGlyph() const;
+  std::string getName() const;
+  bool blocksMovement() const;
+
 };
