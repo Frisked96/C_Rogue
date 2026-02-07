@@ -18,6 +18,8 @@ class IEntityListener {
 public:
   virtual void onEntitySignatureChanged(Entity *entity,
                                         Signature newSignature) = 0;
+  virtual void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
+                             int newY) = 0;
   virtual ~IEntityListener() = default;
 };
 

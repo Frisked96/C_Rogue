@@ -1,7 +1,6 @@
 #pragma once
 
-#include "component.hpp"
-#include "entity.hpp"
+#include "spatial_system.hpp"
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -27,8 +26,8 @@ private:
   // Entity pool
   std::vector<std::unique_ptr<Entity>> pool;
 
-  // Cached lists for queries could be added here if performance is critical.
-  // For now, we iterate.
+  // Spatial Partitioning System
+  SpatialGrid spatialGrid;
 
 public:
   EntityManager();
@@ -48,6 +47,9 @@ public:
   void destroyEntity(int id);
   Entity *getEntity(int id);
 
+  SpatialGrid &getSpatialGrid() { return spatialGrid; }
+  const SpatialGrid &getSpatialGrid() const { return spatialGrid; }
+
   // Query
   // Returns all entities that possess at least the specified components.
   template <typename... Components> std::vector<Entity *> getEntitiesWith() {
@@ -60,6 +62,8 @@ public:
   // IEntityListener implementation
   void onEntitySignatureChanged(Entity *entity,
                                 Signature newSignature) override;
+  void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
+                     int newY) override;
 
 private:
   void addEntity(std::unique_ptr<Entity> entity);

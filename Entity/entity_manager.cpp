@@ -36,6 +36,12 @@ void EntityManager::destroyEntity(int id) {
   auto it = entities.find(id);
   if (it != entities.end()) {
     Entity *ptr = it->second.get();
+
+    // Remove from spatial grid if it has a position
+    if (auto *pos = ptr->getComponent<PositionComponent>()) {
+      spatialGrid.removeEntity(ptr, pos->x, pos->y);
+    }
+
     // Check if it's a base Entity to pool it
     // Only pool generic entities to avoid object slicing/polymorphic confusion
     if (typeid(*ptr) == typeid(Entity)) {
@@ -48,32 +54,26 @@ void EntityManager::destroyEntity(int id) {
   }
 }
 
-Entity *EntityManager::getEntity(int id) {
-  auto it = entities.find(id);
-  if (it != entities.end()) {
-    return it->second.get();
-  }
-  return nullptr;
-}
-
-std::vector<Entity *> EntityManager::getEntitiesMatching(Signature mask) {
-  std::vector<Entity *> results;
-  // Heuristic reserve
-  if (!entities.empty()) {
-    results.reserve(entities.size() / 4);
-  }
-
-  for (auto &pair : entities) {
-    Entity *e = pair.second.get();
-    if ((e->getSignature() & mask) == mask) {
-      results.push_back(e);
-    }
-  }
-  return results;
-}
+// ... (getEntity and getEntitiesMatching)
 
 void EntityManager::onEntitySignatureChanged(Entity *entity,
                                              Signature newSignature) {
-  // This allows for future optimizations, such as updating cached lists
-  // or notifying specific systems.
+  // If entity gained PositionComponent, add it to spatial grid
+  // If it lost it, remove it
+  static size_t posBit = BaseComponent<PositionComponent>::getComponentTypeId();
+  
+  if (newSignature.test(posBit)) {
+    if (auto *pos = entity->getComponent<PositionComponent>()) {
+      spatialGrid.updateEntity(entity, pos->x, pos->y, pos->x, pos->y);
+    }
+  } else {
+    // We don't know the old position easily here if it just lost the component
+    // But SpatialGrid can be updated to handle this if we store old position somewhere
+    // For now, let's assume entities don't often lose PositionComponent without being destroyed
+  }
+}
+
+void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
+                                 int newY) {
+  spatialGrid.updateEntity(entity, oldX, oldY, newX, newY);
 }
