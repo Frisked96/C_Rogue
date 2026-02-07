@@ -63,6 +63,7 @@ public:
                                 Signature newSignature) override;
   void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
                      int newY) override;
+  void onEntityDestroyed(Entity *entity) override;
 
 private:
   void addEntity(std::unique_ptr<Entity> entity);
