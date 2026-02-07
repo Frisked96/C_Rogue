@@ -4,6 +4,8 @@
 #include <string>
 #include <typeindex>
 #include <unordered_map>
+#include "anatomy_components.hpp"
+#include "inventory_component.hpp"
 
 class Entity {
 private:
@@ -56,4 +58,12 @@ public:
   char getGlyph() const;
   std::string getName() const;
   bool blocksMovement() const;
+  bool hasHealth() const;
+  HealthComponent* getHealth();
+  bool hasAnatomy() const;
+  AnatomyComponent* getAnatomy();
+  bool hasCombat() const;
+  CombatComponent* getCombat();
+  bool hasInventory() const;
+  InventoryComponent* getInventory();
 };

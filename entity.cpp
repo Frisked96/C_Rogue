@@ -38,3 +38,35 @@ std::string Entity::getName() const {
 bool Entity::blocksMovement() const {
   return hasComponent<BlockingComponent>();
 }
+
+bool Entity::hasHealth() const {
+    return hasComponent<HealthComponent>();
+}
+
+HealthComponent* Entity::getHealth() {
+    return getComponent<HealthComponent>();
+}
+
+bool Entity::hasAnatomy() const {
+    return hasComponent<AnatomyComponent>();
+}
+
+AnatomyComponent* Entity::getAnatomy() {
+    return getComponent<AnatomyComponent>();
+}
+
+bool Entity::hasCombat() const {
+    return hasComponent<CombatComponent>();
+}
+
+CombatComponent* Entity::getCombat() {
+    return getComponent<CombatComponent>();
+}
+
+bool Entity::hasInventory() const {
+    return hasComponent<InventoryComponent>();
+}
+
+InventoryComponent* Entity::getInventory() {
+    return getComponent<InventoryComponent>();
+}
