@@ -31,6 +31,13 @@ bool checkVitalRecursive(const std::vector<std::unique_ptr<BodyPart>>& parts) {
 
 std::unique_ptr<Component> AnatomyComponent::clone() const {
   auto copy = std::make_unique<AnatomyComponent>();
+  copy->blood_volume = blood_volume;
+  copy->max_blood_volume = max_blood_volume;
+  copy->oxygen_saturation = oxygen_saturation;
+  copy->stored_energy = stored_energy;
+  copy->hydration = hydration;
+  copy->accumulated_pain = accumulated_pain;
+  
   for (const auto &part : body_parts) {
     copy->addBodyPart(part->clonePart());
   }

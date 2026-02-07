@@ -10,7 +10,18 @@ class AnatomyComponent : public BaseComponent<AnatomyComponent> {
 public:
   std::vector<std::unique_ptr<BodyPart>> body_parts;
 
-  AnatomyComponent() = default;
+  // Physiology State
+  float blood_volume;        // Liters (e.g. 5.0 for human)
+  float max_blood_volume;
+  float oxygen_saturation;   // 0.0 to 100.0
+  float stored_energy;       // Calories/Energy units
+  float hydration;           // 0.0 to 100.0
+  float accumulated_pain;    // Sum of pain from all parts
+
+  AnatomyComponent() 
+      : blood_volume(5.0f), max_blood_volume(5.0f), 
+        oxygen_saturation(100.0f), stored_energy(2000.0f), 
+        hydration(100.0f), accumulated_pain(0.0f) {}
 
   // Custom clone because of unique_ptr
   std::unique_ptr<Component> clone() const override;
@@ -37,6 +48,7 @@ public:
   bool is_vital;
   bool is_immune_to_poison;
   bool is_functional;
+  int bleeding_intensity; // Damage per turn due to bleeding
 
   // Spatial information relative to parent (or entity center if root)
   float relative_x;
@@ -50,13 +62,14 @@ public:
   // Attachments this part can have (eg. armor, weapons, hand can hold items)
   std::vector<std::string> attachment_points;
 
-  BodyPart() : name(""), max_hitpoints(0), current_hitpoints(0), is_vital(false), is_immune_to_poison(false), is_functional(true), relative_x(0), relative_y(0), width(0), height(0) {}
+  BodyPart() : name(""), max_hitpoints(0), current_hitpoints(0), is_vital(false), is_immune_to_poison(false), is_functional(true), bleeding_intensity(0), pain_level(0.0f), arterial_integrity(1.0f), relative_x(0), relative_y(0), width(0), height(0) {}
 
   BodyPart(const std::string &name, int hp, bool vital = false,
            bool immune_to_poison = false, float rx = 0.0f, float ry = 0.0f,
            float w = 0.5f, float h = 0.5f)
       : name(name), max_hitpoints(hp), current_hitpoints(hp), is_vital(vital),
-        is_immune_to_poison(immune_to_poison), is_functional(true),
+        is_immune_to_poison(immune_to_poison), is_functional(true), bleeding_intensity(0),
+        pain_level(0.0f), arterial_integrity(1.0f),
         relative_x(rx), relative_y(ry), width(w), height(h) {}
 
   virtual ~BodyPart() = default;
@@ -67,6 +80,9 @@ public:
                                           relative_y, width, height);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
+    copy->bleeding_intensity = bleeding_intensity;
+    copy->pain_level = pain_level;
+    copy->arterial_integrity = arterial_integrity;
     copy->attachment_points = attachment_points;
     
     // Deep copy internal parts
@@ -134,6 +150,9 @@ public:
                                       strength, dexerity, is_vital);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
+    copy->bleeding_intensity = bleeding_intensity;
+    copy->pain_level = pain_level;
+    copy->arterial_integrity = arterial_integrity;
     copy->attachment_points = attachment_points;
     
     for (const auto& part : internal_parts) {
@@ -163,6 +182,9 @@ public:
                                        is_vital, efficiency);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
+    copy->bleeding_intensity = bleeding_intensity;
+    copy->pain_level = pain_level;
+    copy->arterial_integrity = arterial_integrity;
     copy->attachment_points = attachment_points;
     
     for (const auto& part : internal_parts) {
