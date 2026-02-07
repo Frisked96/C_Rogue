@@ -13,6 +13,7 @@ private:
     void processRespiration(AnatomyComponent* anatomy);
     void processMetabolism(AnatomyComponent* anatomy, HealthComponent* health);
     void processPain(AnatomyComponent* anatomy);
+    void processStress(AnatomyComponent* anatomy);
     void processHealing(AnatomyComponent* anatomy);
 
     // Helpers

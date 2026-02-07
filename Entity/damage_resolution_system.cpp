@@ -6,14 +6,54 @@ AttackResult DamageResolutionSystem::resolveAttack(Entity* attacker, Entity* def
     
     auto* anatomy = defender->getComponent<AnatomyComponent>();
     auto* health = defender->getComponent<HealthComponent>();
+    auto* defCombat = defender->getComponent<CombatComponent>(); // To get defender's reach/defense
     
     if (!anatomy || !health || !health->is_alive) return result;
+
+    // 0. Calculate Hit Chance (New Logic)
+    float baseHitChance = 0.8f;
+    float accuracy = 1.0f; // Default if no combat component on attacker
+    
+    // Attempt to get attacker accuracy from component if available
+    if (attacker) {
+        if (auto* atkCombat = attacker->getComponent<CombatComponent>()) {
+            accuracy = atkCombat->accuracy;
+        }
+    }
+
+    // Calculate Reach Advantage
+    float defReach = 0.5f; // Default (fists/short)
+    float defDefense = 0.0f;
+    if (defCombat) {
+        defReach = defCombat->reach;
+        defDefense = static_cast<float>(defCombat->defense); // Using defense as dodge/parry score
+    }
+
+    float reachDelta = info.reach - defReach;
+    float reachBonus = reachDelta * 0.15f; // +15% hit chance per 1.0 reach advantage
+
+    // Leverage vs Defense (Leverage helps break through guards)
+    // If leverage > 1.0, it reduces the effective defense of the target for the hit calculation
+    float effectiveDefense = defDefense / info.leverage;
+
+    // Final Hit Calculation
+    // Simple formula: (Base + Acc + ReachBonus) - (Defense * 0.05)
+    // Assuming Defense is like D&D AC or similar, let's scale it. 
+    // If Defense is 5, 5 * 0.05 = 0.25 reduction.
+    float hitChance = (baseHitChance * accuracy) + reachBonus - (effectiveDefense * 0.05f);
+
+    std::uniform_real_distribution<float> hitRoll(0.0f, 1.0f);
+    if (hitRoll(rng) > hitChance) {
+        result.hit = false;
+        return result; // Missed
+    }
+
+    result.hit = true;
 
     // 1. Select target body part
     BodyPart* targetPart = selectTargetPart(anatomy, info.type);
     if (!targetPart) return result;
     
-    result.hit = true;
     result.body_part_name = targetPart->name;
 
     // 2. Armor Calculation

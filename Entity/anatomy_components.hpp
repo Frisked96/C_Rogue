@@ -17,11 +17,14 @@ public:
   float stored_energy;       // Calories/Energy units
   float hydration;           // 0.0 to 100.0
   float accumulated_pain;    // Sum of pain from all parts
+  float stress_level;        // 0.0 (calm) to 100.0 (panic)
+  float adrenaline_level;    // 0.0 to 100.0 (fight or flight)
 
   AnatomyComponent() 
       : blood_volume(5.0f), max_blood_volume(5.0f), 
         oxygen_saturation(100.0f), stored_energy(2000.0f), 
-        hydration(100.0f), accumulated_pain(0.0f) {}
+        hydration(100.0f), accumulated_pain(0.0f),
+        stress_level(0.0f), adrenaline_level(0.0f) {}
 
   // Custom clone because of unique_ptr
   std::unique_ptr<Component> clone() const override;

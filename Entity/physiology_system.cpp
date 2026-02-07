@@ -9,7 +9,8 @@ void PhysiologySystem::processEntity(Entity* entity, AnatomyComponent* anatomy, 
     processCirculation(anatomy, health);
     processRespiration(anatomy);
     processMetabolism(anatomy, health);
-    processPain(anatomy);
+    processPain(anatomy); // Updates base pain
+    processStress(anatomy); // Updates stress/adrenaline and modifies effective pain
     processHealing(anatomy);
 }
 
@@ -144,6 +145,53 @@ void PhysiologySystem::processPain(AnatomyComponent* anatomy) {
     // Shock simulation
     // If pain is very high, maybe skip turn or reduce stats?
     // For now, we just track it. 
+}
+
+// -----------------------------------------------------------------------------
+// Stress & Adrenaline
+// -----------------------------------------------------------------------------
+void PhysiologySystem::processStress(AnatomyComponent* anatomy) {
+    // 1. Adrenaline Response
+    // If pain is high, adrenaline spikes
+    if (anatomy->accumulated_pain > 20.0f) {
+        float response = (anatomy->accumulated_pain - 20.0f) * 0.1f;
+        anatomy->adrenaline_level += response;
+    }
+
+    // Decay Adrenaline
+    if (anatomy->adrenaline_level > 0.0f) {
+        // Decay rate
+        float decay = 2.0f;
+        // Conversion to stress (Crash)
+        anatomy->stress_level += decay * 0.1f;
+        
+        anatomy->adrenaline_level -= decay;
+        if (anatomy->adrenaline_level < 0.0f) anatomy->adrenaline_level = 0.0f;
+    }
+
+    // 2. Stress Mechanics
+    // Pain causes stress
+    if (anatomy->accumulated_pain > 5.0f) {
+        anatomy->stress_level += anatomy->accumulated_pain * 0.01f;
+    }
+
+    // Decay Stress (slowly, requires safety/rest normally)
+    if (anatomy->stress_level > 0.0f) {
+        anatomy->stress_level -= 0.1f;
+        if (anatomy->stress_level < 0.0f) anatomy->stress_level = 0.0f;
+    }
+
+    // Cap
+    if (anatomy->stress_level > 100.0f) anatomy->stress_level = 100.0f;
+    if (anatomy->adrenaline_level > 100.0f) anatomy->adrenaline_level = 100.0f;
+
+    // 3. Adrenaline Masking Pain
+    // High adrenaline masks pain
+    if (anatomy->adrenaline_level > 10.0f) {
+        float maskAmount = anatomy->adrenaline_level * 0.5f;
+        anatomy->accumulated_pain -= maskAmount;
+        if (anatomy->accumulated_pain < 0.0f) anatomy->accumulated_pain = 0.0f;
+    }
 }
 
 // -----------------------------------------------------------------------------

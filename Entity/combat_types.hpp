@@ -33,14 +33,19 @@ struct DamageInfo {
     float armor_penetration; // 0.0 (none) to 1.0 (full bypass)
     float critical_multiplier;
     AttackType attack_type;
+    float reach;             // Weapon/Attack reach
+    float leverage;          // Leverage bonus for accuracy/guard breaking
 
     DamageInfo(float amt = 0.0f, 
                DamageType t = DamageType::BLUNT, 
                float pen = 0.0f, 
                float crit = 2.0f,
-               AttackType at = AttackType::MELEE)
+               AttackType at = AttackType::MELEE,
+               float rch = 0.0f,
+               float lev = 1.0f)
         : amount(amt), type(t), armor_penetration(pen), 
-          critical_multiplier(crit), attack_type(at) {}
+          critical_multiplier(crit), attack_type(at),
+          reach(rch), leverage(lev) {}
 };
 
 /**

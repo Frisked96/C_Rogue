@@ -1,18 +1,9 @@
 #pragma once
 #include "component.hpp"
+#include "item.hpp"
 #include <memory>
 #include <string>
 #include <vector>
-
-// Define Item to allow deep copying
-class Item {
-public:
-  virtual ~Item() = default;
-  virtual std::unique_ptr<Item> clone() const {
-    return std::make_unique<Item>(*this);
-  }
-  // Add other virtual methods if needed for the game
-};
 
 class InventoryComponent : public BaseComponent<InventoryComponent> {
 public:
