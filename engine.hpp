@@ -1,8 +1,8 @@
 #pragma once
 
+#include "Entity/player.hpp"
 #include "game_map.hpp"
 #include "input_handler.hpp"
-#include "player.hpp"
 #include "renderer.hpp"
 #include <memory>
 

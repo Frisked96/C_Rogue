@@ -1,30 +1,65 @@
 #pragma once
+#include "anatomy_components.hpp"
 #include "component.hpp"
+#include "components.hpp"
+#include "inventory_component.hpp"
+#include <bitset>
 #include <memory>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
-#include "anatomy_components.hpp"
-#include "inventory_component.hpp"
+
+constexpr size_t MAX_COMPONENTS = 32;
+using Signature = std::bitset<MAX_COMPONENTS>;
+
+class Entity;
+
+class IEntityListener {
+public:
+  virtual void onEntitySignatureChanged(Entity *entity,
+                                        Signature newSignature) = 0;
+  virtual ~IEntityListener() = default;
+};
 
 class Entity {
 private:
   int id;
   std::unordered_map<Component::TypeId, std::unique_ptr<Component>> components;
+  Signature signature;
+  IEntityListener *listener = nullptr;
 
   static int next_id;
 
 public:
   Entity();
+  virtual ~Entity() = default;
 
   // getters
   int getId() const { return id; }
+  Signature getSignature() const { return signature; }
+  void setListener(IEntityListener *l) { listener = l; }
+
+  void reset() {
+    components.clear();
+    signature.reset();
+    id = next_id++;
+    if (listener)
+      listener->onEntitySignatureChanged(this, signature);
+  }
 
   // component management
   template <typename T, typename... Args> T &addComponent(Args &&...args) {
     auto component = std::make_unique<T>(std::forward<Args>(args)...);
     auto &ref = *component;
     components[T::getStaticTypeId()] = std::move(component);
+
+    size_t bit = T::getComponentTypeId();
+    if (bit < MAX_COMPONENTS) {
+      signature.set(bit);
+      if (listener)
+        listener->onEntitySignatureChanged(this, signature);
+    }
+
     return ref;
   }
 
@@ -50,6 +85,13 @@ public:
 
   template <typename T> void removeComponent() {
     components.erase(T::getStaticTypeId());
+
+    size_t bit = T::getComponentTypeId();
+    if (bit < MAX_COMPONENTS) {
+      signature.reset(bit);
+      if (listener)
+        listener->onEntitySignatureChanged(this, signature);
+    }
   }
 
   // helper methods
@@ -59,11 +101,11 @@ public:
   std::string getName() const;
   bool blocksMovement() const;
   bool hasHealth() const;
-  HealthComponent* getHealth();
+  HealthComponent *getHealth();
   bool hasAnatomy() const;
-  AnatomyComponent* getAnatomy();
+  AnatomyComponent *getAnatomy();
   bool hasCombat() const;
-  CombatComponent* getCombat();
+  CombatComponent *getCombat();
   bool hasInventory() const;
-  InventoryComponent* getInventory();
+  InventoryComponent *getInventory();
 };

@@ -39,34 +39,22 @@ bool Entity::blocksMovement() const {
   return hasComponent<BlockingComponent>();
 }
 
-bool Entity::hasHealth() const {
-    return hasComponent<HealthComponent>();
+bool Entity::hasHealth() const { return hasComponent<HealthComponent>(); }
+
+HealthComponent *Entity::getHealth() { return getComponent<HealthComponent>(); }
+
+bool Entity::hasAnatomy() const { return hasComponent<AnatomyComponent>(); }
+
+AnatomyComponent *Entity::getAnatomy() {
+  return getComponent<AnatomyComponent>();
 }
 
-HealthComponent* Entity::getHealth() {
-    return getComponent<HealthComponent>();
-}
+bool Entity::hasCombat() const { return hasComponent<CombatComponent>(); }
 
-bool Entity::hasAnatomy() const {
-    return hasComponent<AnatomyComponent>();
-}
+CombatComponent *Entity::getCombat() { return getComponent<CombatComponent>(); }
 
-AnatomyComponent* Entity::getAnatomy() {
-    return getComponent<AnatomyComponent>();
-}
+bool Entity::hasInventory() const { return hasComponent<InventoryComponent>(); }
 
-bool Entity::hasCombat() const {
-    return hasComponent<CombatComponent>();
-}
-
-CombatComponent* Entity::getCombat() {
-    return getComponent<CombatComponent>();
-}
-
-bool Entity::hasInventory() const {
-    return hasComponent<InventoryComponent>();
-}
-
-InventoryComponent* Entity::getInventory() {
-    return getComponent<InventoryComponent>();
+InventoryComponent *Entity::getInventory() {
+  return getComponent<InventoryComponent>();
 }
