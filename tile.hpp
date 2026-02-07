@@ -20,8 +20,8 @@ struct Tile {
   Tile() = default;
   // sym for glyph
   Tile(char sym, std::string n, bool w, bool t)
-      : glyph(sym), is_walkable(w), is_transparent(t), is_explored(false), name(n),
-        fg_color(7), bg_color(0) {}
+      : glyph(sym), is_walkable(w), is_transparent(t), is_explored(false),
+        name(n), fg_color(7), bg_color(0) {}
 
   // utility
   bool is_wall() const { return !is_walkable && !is_transparent; }
@@ -29,6 +29,6 @@ struct Tile {
 };
 
 namespace Tiles {
-    extern const Tile Wall;
-    extern const Tile Floor;
-}
+extern const Tile Wall;
+extern const Tile Floor;
+} // namespace Tiles

@@ -1,88 +1,84 @@
-#pragma once 
+#pragma once
 #include "component.hpp"
 #include <string>
 
-// basic components for most entities 
+// basic components for most entities
 class PositionComponent : public BaseComponent<PositionComponent> {
-    public:
-    int x;
-    int y;
+public:
+  int x;
+  int y;
 
-    PositionComponent(int x = 0, int y = 0) : x(x), y(y) {}
+  PositionComponent(int x = 0, int y = 0) : x(x), y(y) {}
 };
 
 class RenderComponent : public BaseComponent<RenderComponent> {
-    public:
-    char glyph;
+public:
+  char glyph;
 
-    RenderComponent(char glyph = '?') : glyph(glyph) {}
+  RenderComponent(char glyph = '?') : glyph(glyph) {}
 };
 
 class NameComponent : public BaseComponent<NameComponent> {
-    public:
-    std::string name;
-    
-    NameComponent( const std::string& name = "") : name(name) {}
+public:
+  std::string name;
+
+  NameComponent(const std::string &name = "") : name(name) {}
 };
 
 class BlockingComponent : public BaseComponent<BlockingComponent> {
-    // No data as this is just a flag 
-    // entities that have this block movement
+  // No data as this is just a flag
+  // entities that have this block movement
 };
 
 class HealthComponent : public BaseComponent<HealthComponent> {
-    public:
-    int current_health;
-    int max_health;
-    bool is_alive;
+public:
+  int current_health;
+  int max_health;
+  bool is_alive;
 
-    HealthComponent(int max_hp = 100) : max_health(max_hp), current_health(max_hp), is_alive(true) {}
-    
-    void takeDamage(int damage) {
-        current_health -= damage;
-        if (current_health <= 0) {
-            current_health = 0;
-            is_alive = false;
-        }
-    }
+  HealthComponent(int max_hp = 100)
+      : max_health(max_hp), current_health(max_hp), is_alive(true) {}
 
-    void heal(int amount) {
-        current_health += amount;
-        if (current_health > max_health) {
-            current_health = max_health;
-        }
-        if (current_health > 0) {
-            is_alive = true;
-        }
+  void takeDamage(int damage) {
+    current_health -= damage;
+    if (current_health <= 0) {
+      current_health = 0;
+      is_alive = false;
     }
+  }
 
-    float getHEalthPercentage() const {
-        return static_cast<float>(current_health) / max_health;
+  void heal(int amount) {
+    current_health += amount;
+    if (current_health > max_health) {
+      current_health = max_health;
     }
+    if (current_health > 0) {
+      is_alive = true;
+    }
+  }
+
+  float getHEalthPercentage() const {
+    return static_cast<float>(current_health) / max_health;
+  }
 };
 
-class CombatComponent :public BaseComponent<CombatComponent> {
-    public:
-    int attack_damage;
-    int defense;
-    float attack_range;
-    
-    CombatComponent(int atk = 10, int def = 5, float range = 1.0f)
-        : attack_damage(atk), defense(def), attack_range(range) {}
+class CombatComponent : public BaseComponent<CombatComponent> {
+public:
+  int attack_damage;
+  int defense;
+  float attack_range;
+
+  CombatComponent(int atk = 10, int def = 5, float range = 1.0f)
+      : attack_damage(atk), defense(def), attack_range(range) {}
 };
 
 class FactionComponent : public BaseComponent<FactionComponent> {
 public:
-    enum class Faction {
-        PLAYER,
-        MONSTER,
-        NEUTRAL,
-        FRIENDLY
-    };
-    
-    Faction faction;
-    bool hostile_to_player;
-    
-    FactionComponent(Faction f = Faction::NEUTRAL, bool hostile = false)
-        : faction(f), hostile_to_player(hostile) {}
+  enum class Faction { PLAYER, MONSTER, NEUTRAL, FRIENDLY };
+
+  Faction faction;
+  bool hostile_to_player;
+
+  FactionComponent(Faction f = Faction::NEUTRAL, bool hostile = false)
+      : faction(f), hostile_to_player(hostile) {}
 };

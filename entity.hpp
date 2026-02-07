@@ -1,8 +1,9 @@
 #pragma once
-#include <memory>
-#include <unordered_map>
-#include <typeindex>
 #include "component.hpp"
+#include <memory>
+#include <string>
+#include <typeindex>
+#include <unordered_map>
 
 class Entity {
 private:
@@ -15,42 +16,37 @@ public:
   Entity();
 
   // getters
-  int getId() const { return id;}
+  int getId() const { return id; }
 
-  // component management 
-  template<typename T, typename... Args>
-  T& addComponent(Args&&... args) {
+  // component management
+  template <typename T, typename... Args> T &addComponent(Args &&...args) {
     auto component = std::make_unique<T>(std::forward<Args>(args)...);
-    auto& ref = *component;
+    auto &ref = *component;
     components[T::getStaticTypeId()] = std::move(component);
     return ref;
   }
 
-  template<typename T>
-  bool hasComponent() const {
+  template <typename T> bool hasComponent() const {
     return components.find(T::getStaticTypeId()) != components.end();
   }
 
-  template<typename T>
-  T* getComponent() {
+  template <typename T> T *getComponent() {
     auto it = components.find(T::getStaticTypeId());
     if (it != components.end()) {
-      return static_cast<T*>(it->second.get());
+      return static_cast<T *>(it->second.get());
     }
     return nullptr;
   }
 
-  template<typename T>
-  const T* getComponent() const {
+  template <typename T> const T *getComponent() const {
     auto it = components.find(T::getStaticTypeId());
     if (it != components.end()) {
-      return static_cast<const T*>(it->second.get());
+      return static_cast<const T *>(it->second.get());
     }
     return nullptr;
-  } 
+  }
 
-  template<typename T>
-  void removeComponent() {
+  template <typename T> void removeComponent() {
     components.erase(T::getStaticTypeId());
   }
 
@@ -60,5 +56,4 @@ public:
   char getGlyph() const;
   std::string getName() const;
   bool blocksMovement() const;
-
 };
