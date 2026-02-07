@@ -5,18 +5,6 @@
 #include <iostream> 
 #include "entity_manager.hpp"
 
-void PhysiologySystem::update(EntityManager& entityManager) {
-    auto entities = entityManager.getEntitiesWith<AnatomyComponent, HealthComponent>();
-    for (auto* entity : entities) {
-        auto* anatomy = entity->getComponent<AnatomyComponent>();
-        auto* health = entity->getComponent<HealthComponent>();
-
-        if (health->is_alive) {
-            processEntity(entity, anatomy, health);
-        }
-    }
-}
-
 void PhysiologySystem::processEntity(Entity* entity, AnatomyComponent* anatomy, HealthComponent* health) {
     processCirculation(anatomy, health);
     processRespiration(anatomy);

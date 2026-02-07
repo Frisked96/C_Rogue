@@ -6,10 +6,6 @@
 
 class AnatomySystem {
 public:
-    // Update all entities with anatomy
-    // Handles bleeding, vital checks, functionality updates
-    void update(EntityManager& entityManager);
-
     // Apply specific logic for limb reach calculations (e.g., can entity reach x,y?)
     // This is a helper for other systems (CombatSystem)
     float calculateReach(Entity* entity);
@@ -21,8 +17,9 @@ public:
     // Returns true if wound was applied
     bool inflictWound(Entity* target, const std::string& partName, int damage, int bleedSeverity = 0);
 
-private:
     void processEntity(Entity* entity);
+
+private:
     void checkVitals(Entity* entity, AnatomyComponent* anatomy);
     void updateLimbStatus(AnatomyComponent* anatomy);
 

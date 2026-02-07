@@ -37,9 +37,9 @@ void EntityManager::destroyEntity(int id) {
   if (it != entities.end()) {
     Entity *ptr = it->second.get();
 
-    // Remove from spatial grid if it has a position
-    if (auto *pos = ptr->getComponent<PositionComponent>()) {
-      spatialGrid.removeEntity(ptr, pos->x, pos->y);
+    // Notify listener for cleanup
+    if (externalListener) {
+      externalListener->onEntityDestroyed(ptr);
     }
 
     // Check if it's a base Entity to pool it
@@ -58,22 +58,20 @@ void EntityManager::destroyEntity(int id) {
 
 void EntityManager::onEntitySignatureChanged(Entity *entity,
                                              Signature newSignature) {
-  // If entity gained PositionComponent, add it to spatial grid
-  // If it lost it, remove it
-  static size_t posBit = BaseComponent<PositionComponent>::getComponentTypeId();
-  
-  if (newSignature.test(posBit)) {
-    if (auto *pos = entity->getComponent<PositionComponent>()) {
-      spatialGrid.updateEntity(entity, pos->x, pos->y, pos->x, pos->y);
-    }
-  } else {
-    // We don't know the old position easily here if it just lost the component
-    // But SpatialGrid can be updated to handle this if we store old position somewhere
-    // For now, let's assume entities don't often lose PositionComponent without being destroyed
+  if (externalListener) {
+    externalListener->onEntitySignatureChanged(entity, newSignature);
   }
 }
 
 void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
                                  int newY) {
-  spatialGrid.updateEntity(entity, oldX, oldY, newX, newY);
+  if (externalListener) {
+    externalListener->onEntityMoved(entity, oldX, oldY, newX, newY);
+  }
+}
+
+void EntityManager::onEntityDestroyed(Entity *entity) {
+  if (externalListener) {
+    externalListener->onEntityDestroyed(entity);
+  }
 }

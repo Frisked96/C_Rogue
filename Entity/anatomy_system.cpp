@@ -2,13 +2,6 @@
 #include "components.hpp"
 #include <cstdlib>
 
-void AnatomySystem::update(EntityManager& entityManager) {
-    auto entities = entityManager.getEntitiesWith<AnatomyComponent>();
-    for (auto* entity : entities) {
-        processEntity(entity);
-    }
-}
-
 void AnatomySystem::processEntity(Entity* entity) {
     if (!entity->hasAnatomy()) return;
     

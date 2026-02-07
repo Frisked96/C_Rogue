@@ -5,12 +5,9 @@
 
 class PhysiologySystem {
 public:
-    // Update biological processes for all entities
-    void update(EntityManager& entityManager);
+    void processEntity(Entity* entity, AnatomyComponent* anatomy, HealthComponent* health);
 
 private:
-    void processEntity(Entity* entity, AnatomyComponent* anatomy, HealthComponent* health);
-    
     // Sub-processes
     void processCirculation(AnatomyComponent* anatomy, HealthComponent* health);
     void processRespiration(AnatomyComponent* anatomy);

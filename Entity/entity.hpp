@@ -20,6 +20,7 @@ public:
                                         Signature newSignature) = 0;
   virtual void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
                              int newY) = 0;
+  virtual void onEntityDestroyed(Entity *entity) = 0;
   virtual ~IEntityListener() = default;
 };
 

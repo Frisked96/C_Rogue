@@ -26,12 +26,14 @@ private:
   // Entity pool
   std::vector<std::unique_ptr<Entity>> pool;
 
-  // Spatial Partitioning System
-  SpatialGrid spatialGrid;
+  // External listener (e.g. SystemManager)
+  IEntityListener* externalListener = nullptr;
 
 public:
   EntityManager();
   ~EntityManager();
+
+  void setExternalListener(IEntityListener* listener) { externalListener = listener; }
 
   // Factory methods
   Entity *createEntity();
@@ -46,9 +48,6 @@ public:
 
   void destroyEntity(int id);
   Entity *getEntity(int id);
-
-  SpatialGrid &getSpatialGrid() { return spatialGrid; }
-  const SpatialGrid &getSpatialGrid() const { return spatialGrid; }
 
   // Query
   // Returns all entities that possess at least the specified components.
