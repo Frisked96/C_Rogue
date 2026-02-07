@@ -1,5 +1,6 @@
 #pragma once
 #include "component.hpp"
+#include "combat_types.hpp"
 #include <string>
 
 // basic components for most entities
@@ -37,7 +38,7 @@ public:
   bool is_alive;
 
   HealthComponent(int max_hp = 100)
-      : max_health(max_hp), current_health(max_hp), is_alive(true) {}
+      : current_health(max_hp), max_health(max_hp), is_alive(true) {}
 
   void takeDamage(int damage) {
     current_health -= damage;
@@ -67,9 +68,15 @@ public:
   int attack_damage;
   int defense;
   float attack_range;
+  DamageType preferred_damage_type;
+  float accuracy;
 
-  CombatComponent(int atk = 10, int def = 5, float range = 1.0f)
-      : attack_damage(atk), defense(def), attack_range(range) {}
+  CombatComponent(int atk = 10, int def = 5, float range = 1.0f, DamageType type = DamageType::BLUNT)
+      : attack_damage(atk), defense(def), attack_range(range), preferred_damage_type(type), accuracy(1.0f) {}
+
+  DamageInfo getDamageInfo() const {
+      return DamageInfo(static_cast<float>(attack_damage), preferred_damage_type);
+  }
 };
 
 class FactionComponent : public BaseComponent<FactionComponent> {

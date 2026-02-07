@@ -26,6 +26,9 @@ private:
     void checkVitals(Entity* entity, AnatomyComponent* anatomy);
     void updateLimbStatus(AnatomyComponent* anatomy);
 
+    void aggregateStatus(AnatomyComponent* anatomy, float& totalPain);
+    void aggregatePartStatus(BodyPart* part, float& totalPain);
+
     // Recursive helpers
     float calculateLegEfficiency(const std::vector<std::unique_ptr<BodyPart>>& parts);
 };

@@ -4,8 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-void SpatialGrid::updateEntity(Entity *entity, int oldX, int oldY, int newX,
-                               int newY) {
+void SpatialGrid::updateEntity(Entity *entity, int oldX, int oldY, int newX, int newY) {
   if (oldX == newX && oldY == newY) {
     // Only add if not already there, but usually this is called on move
     auto &vec = grid[getGridKey(newX, newY)];
@@ -39,8 +38,7 @@ std::vector<Entity *> SpatialGrid::getEntitiesAt(int x, int y) const {
   return {};
 }
 
-std::vector<Entity *> SpatialGrid::getEntitiesInRadius(int x, int y,
-                                                      float radius) const {
+std::vector<Entity *> SpatialGrid::getEntitiesInRadius(int x, int y, float radius) const {
   std::vector<Entity *> results;
   int r = static_cast<int>(std::ceil(radius));
 
@@ -59,8 +57,7 @@ bool SpatialGrid::areAdjacent(int x1, int y1, int x2, int y2) const {
   return std::abs(x1 - x2) <= 1 && std::abs(y1 - y2) <= 1;
 }
 
-std::vector<SpatialGrid::RayHit> SpatialGrid::raycast(int x1, int y1, int x2,
-                                                     int y2) const {
+std::vector<SpatialGrid::RayHit> SpatialGrid::raycast(int x1, int y1, int x2, int y2) const {
   std::vector<RayHit> hits;
 
   int dx = std::abs(x2 - x1);
@@ -143,8 +140,7 @@ BodyPart* checkHitRecursive(BodyPart* part, float localX, float localY) {
     return part;
 }
 
-BodyPart *SpatialGrid::determineHitLocation(Entity *target, float hitOffsetX,
-                                            float hitOffsetY) const {
+BodyPart *SpatialGrid::determineHitLocation(Entity *target, float hitOffsetX, float hitOffsetY) const {
   if (!target->hasAnatomy())
     return nullptr;
 

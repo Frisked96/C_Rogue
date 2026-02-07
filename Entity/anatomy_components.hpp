@@ -49,6 +49,9 @@ public:
   bool is_immune_to_poison;
   bool is_functional;
   int bleeding_intensity; // Damage per turn due to bleeding
+  float pain_level;       // 0.0 to 100.0
+  float arterial_integrity; // 1.0 = intact, 0.0 = severed
+  int armor_value;        // Damage reduction
 
   // Spatial information relative to parent (or entity center if root)
   float relative_x;
@@ -62,22 +65,24 @@ public:
   // Attachments this part can have (eg. armor, weapons, hand can hold items)
   std::vector<std::string> attachment_points;
 
-  BodyPart() : name(""), max_hitpoints(0), current_hitpoints(0), is_vital(false), is_immune_to_poison(false), is_functional(true), bleeding_intensity(0), pain_level(0.0f), arterial_integrity(1.0f), relative_x(0), relative_y(0), width(0), height(0) {}
+  BodyPart() : name(""), max_hitpoints(0), current_hitpoints(0), is_vital(false), is_immune_to_poison(false), is_functional(true), bleeding_intensity(0), pain_level(0.0f), arterial_integrity(1.0f), armor_value(0), relative_x(0), relative_y(0), width(0), height(0) {}
 
   BodyPart(const std::string &name, int hp, bool vital = false,
            bool immune_to_poison = false, float rx = 0.0f, float ry = 0.0f,
-           float w = 0.5f, float h = 0.5f)
+           float w = 0.5f, float h = 0.5f, int armor = 0)
       : name(name), max_hitpoints(hp), current_hitpoints(hp), is_vital(vital),
         is_immune_to_poison(immune_to_poison), is_functional(true), bleeding_intensity(0),
-        pain_level(0.0f), arterial_integrity(1.0f),
+        pain_level(0.0f), arterial_integrity(1.0f), armor_value(armor),
         relative_x(rx), relative_y(ry), width(w), height(h) {}
 
   virtual ~BodyPart() = default;
 
+  float getTargetWeight() const { return width * height; }
+
   virtual std::unique_ptr<BodyPart> clonePart() const {
     auto copy = std::make_unique<BodyPart>(name, max_hitpoints, is_vital,
                                           is_immune_to_poison, relative_x,
-                                          relative_y, width, height);
+                                          relative_y, width, height, armor_value);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
     copy->bleeding_intensity = bleeding_intensity;
@@ -135,8 +140,8 @@ public:
 
   Limb(const std::string &name, Type type, int hp, float rx = 0.0f,
        float ry = 0.0f, float w = 0.2f, float h = 0.5f, float str = 1.0f, float dex = 1.0f,
-       bool vital = false)
-      : BodyPart(name, hp, vital, false, rx, ry, w, h), limb_type(type),
+       bool vital = false, int armor = 0)
+      : BodyPart(name, hp, vital, false, rx, ry, w, h, armor), limb_type(type),
         strength(str), dexerity(dex) {
     // arm can hold things
     if (type == Type::ARM) {
@@ -147,7 +152,7 @@ public:
   virtual std::unique_ptr<BodyPart> clonePart() const override {
     auto copy = std::make_unique<Limb>(name, limb_type, max_hitpoints,
                                       relative_x, relative_y, width, height,
-                                      strength, dexerity, is_vital);
+                                      strength, dexerity, is_vital, armor_value);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
     copy->bleeding_intensity = bleeding_intensity;
@@ -172,14 +177,14 @@ public:
 
   Organ(const std::string &name, Type type, int hp, float rx = 0.0f,
         float ry = 0.0f, float w = 0.1f, float h = 0.1f, bool vital = true,
-        float eff = 1.0f)
-      : BodyPart(name, hp, vital, false, rx, ry, w, h), organ_type(type),
+        float eff = 1.0f, int armor = 0)
+      : BodyPart(name, hp, vital, false, rx, ry, w, h, armor), organ_type(type),
         efficiency(eff) {}
 
   virtual std::unique_ptr<BodyPart> clonePart() const override {
     auto copy = std::make_unique<Organ>(name, organ_type, max_hitpoints,
-                                       relative_x, relative_y, width, height,
-                                       is_vital, efficiency);
+      relative_x, relative_y, width, height,
+      is_vital, efficiency, armor_value);
     copy->current_hitpoints = current_hitpoints;
     copy->is_functional = is_functional;
     copy->bleeding_intensity = bleeding_intensity;

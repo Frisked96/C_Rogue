@@ -19,6 +19,25 @@ void AnatomySystem::processEntity(Entity* entity) {
 
     // 2. Update Functionality
     updateLimbStatus(anatomy);
+
+    // 3. Aggregate Pain and arterial integrity
+    float totalPain = 0.0f;
+    aggregateStatus(anatomy, totalPain);
+    anatomy->accumulated_pain = totalPain;
+}
+
+void AnatomySystem::aggregateStatus(AnatomyComponent* anatomy, float& totalPain) {
+    for (auto& part : anatomy->body_parts) {
+        aggregatePartStatus(part.get(), totalPain);
+    }
+}
+
+void AnatomySystem::aggregatePartStatus(BodyPart* part, float& totalPain) {
+    totalPain += part->pain_level;
+    // We could also aggregate average arterial integrity if needed for physiology
+    for (auto& internal : part->internal_parts) {
+        aggregatePartStatus(internal.get(), totalPain);
+    }
 }
 
 void AnatomySystem::checkVitals(Entity* entity, AnatomyComponent* anatomy) {
