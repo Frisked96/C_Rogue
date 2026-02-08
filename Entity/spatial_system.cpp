@@ -1,11 +1,9 @@
 #include "spatial_system.hpp"
+#include "anatomy_system.hpp"
 #include "anatomy_components.hpp"
 #include "components.hpp"
 #include <algorithm>
 #include <cmath>
-
-// Forward decl
-BodyPart* checkHitRecursive(AnatomyComponent& anatomy, int partIndex, float localX, float localY);
 
 // Update entity in grid
 void SpatialGrid::updateEntity(Entity *entity, int oldX, int oldY, int newX, int newY) {
@@ -108,59 +106,8 @@ std::vector<SpatialGrid::RayHit> SpatialGrid::raycast(int x1, int y1, int x2, in
     return hits;
 }
 
-// Recursive helper for AABB containment using indices
-BodyPart* checkHitRecursive(AnatomyComponent& anatomy, int partIndex, float localX, float localY) {
-    if (partIndex < 0 || partIndex >= anatomy.body_parts.size()) return nullptr;
-
-    BodyPart& part = anatomy.body_parts[partIndex];
-
-    float halfW = part.width / 2.0f;
-    float halfH = part.height / 2.0f;
-
-    // Check hit on part's bounding box
-    if (localX < -halfW || localX > halfW || localY < -halfH || localY > halfH) {
-        return nullptr;
-    }
-
-    // Check children (internal parts)
-    for (int childIdx : part.children_indices) {
-        if (childIdx < 0 || childIdx >= anatomy.body_parts.size()) continue;
-
-        BodyPart& child = anatomy.body_parts[childIdx];
-
-        // Transform point to child's local space
-        float childLocalX = localX - child.relative_x;
-        float childLocalY = localY - child.relative_y;
-
-        BodyPart* hitChild = checkHitRecursive(anatomy, childIdx, childLocalX, childLocalY);
-        if (hitChild) {
-            return hitChild;
-        }
-    }
-
-    // No internal part hit, so we hit this part
-    return &part;
-}
-
 BodyPart* SpatialGrid::determineHitLocation(Entity *target, float hitOffsetX, float hitOffsetY) const {
     if (!target->hasAnatomy()) return nullptr;
-
     auto *anatomy = target->getAnatomy();
-
-    // Check against all root body parts
-    for (int i = 0; i < anatomy->body_parts.size(); ++i) {
-        BodyPart& part = anatomy->body_parts[i];
-
-        if (part.parent_index == -1) { // Root part
-            float partLocalX = hitOffsetX - part.relative_x;
-            float partLocalY = hitOffsetY - part.relative_y;
-
-            BodyPart* hit = checkHitRecursive(*anatomy, i, partLocalX, partLocalY);
-            if (hit) {
-                return hit;
-            }
-        }
-    }
-
-    return nullptr;
+    return AnatomySystem::determineHitLocation(anatomy, hitOffsetX, hitOffsetY);
 }

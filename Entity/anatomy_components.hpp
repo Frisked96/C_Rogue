@@ -46,6 +46,9 @@ public:
   // Attachments
   std::vector<std::string> attachment_points;
 
+  // Semantic Tags (BioTags)
+  std::vector<std::string> tags;
+
   BodyPart()
       : name(""), type(BodyPartType::GENERIC), limb_type(LimbType::NONE),
         organ_type(OrganType::NONE), max_hitpoints(0), current_hitpoints(0),
@@ -92,6 +95,17 @@ public:
     if (type == BodyPartType::ORGAN) {
         efficiency = static_cast<float>(current_hitpoints) / max_hitpoints;
     }
+  }
+
+  void addTag(const std::string& tag) {
+    tags.push_back(tag);
+  }
+
+  bool hasTag(const std::string& tag) const {
+      for (const auto& t : tags) {
+          if (t == tag) return true;
+      }
+      return false;
   }
 };
 

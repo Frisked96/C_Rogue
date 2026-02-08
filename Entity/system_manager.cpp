@@ -32,24 +32,7 @@ void SystemManager::update(EntityManager& em) {
                 // Check if we can deactivate this entity (stabilized)
                 auto* anat = entity->getAnatomy();
                 if (anat) {
-                    bool bleeding = false;
-                    for (const auto& part : anat->body_parts) {
-                        if (part.bleeding_intensity > 0) {
-                            bleeding = true;
-                            break;
-                        }
-                    }
-
-                    bool pain = anat->accumulated_pain > 5.0f;
-                    bool stress = anat->stress_level > 10.0f;
-                    bool lowHealth = health->current_health < health->max_health;
-                    // Maybe we keep updating if not full health for regen?
-                    // Let's say we only update for regen if they have energy to heal.
-                    bool canHeal = anat->stored_energy > 500.0f && lowHealth;
-
-                    if (bleeding || pain || stress || canHeal) {
-                        stillActive = true;
-                    }
+                    stillActive = physiology.shouldKeepActive(anat, health);
                 }
             }
         }

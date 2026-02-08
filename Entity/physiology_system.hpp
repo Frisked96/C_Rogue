@@ -7,6 +7,7 @@ class Entity;
 class PhysiologySystem {
 public:
     void processEntity(Entity* entity, AnatomyComponent* anatomy, HealthComponent* health);
+    bool shouldKeepActive(AnatomyComponent* anatomy, HealthComponent* health);
 
 private:
     void processCirculation(AnatomyComponent* anatomy, HealthComponent* health);
@@ -16,5 +17,5 @@ private:
     void processStress(AnatomyComponent* anatomy);
     void processHealing(AnatomyComponent* anatomy);
 
-    float calculateOrganEfficiency(AnatomyComponent* anatomy, OrganType type);
+    float calculateFunctionEfficiency(AnatomyComponent* anatomy, const std::string& tag);
 };

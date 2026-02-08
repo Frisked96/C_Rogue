@@ -122,3 +122,58 @@ bool AnatomySystem::inflictWound(Entity* target, const std::string& partName, in
     
     return false;
 }
+
+// Recursive helper for AABB containment using indices
+static BodyPart* checkHitRecursive(AnatomyComponent& anatomy, int partIndex, float localX, float localY) {
+    if (partIndex < 0 || partIndex >= (int)anatomy.body_parts.size()) return nullptr;
+
+    BodyPart& part = anatomy.body_parts[partIndex];
+
+    float halfW = part.width / 2.0f;
+    float halfH = part.height / 2.0f;
+
+    // Check hit on part's bounding box
+    if (localX < -halfW || localX > halfW || localY < -halfH || localY > halfH) {
+        return nullptr;
+    }
+
+    // Check children (internal parts)
+    for (int childIdx : part.children_indices) {
+        if (childIdx < 0 || childIdx >= (int)anatomy.body_parts.size()) continue;
+
+        BodyPart& child = anatomy.body_parts[childIdx];
+
+        // Transform point to child's local space
+        float childLocalX = localX - child.relative_x;
+        float childLocalY = localY - child.relative_y;
+
+        BodyPart* hitChild = checkHitRecursive(anatomy, childIdx, childLocalX, childLocalY);
+        if (hitChild) {
+            return hitChild;
+        }
+    }
+
+    // No internal part hit, so we hit this part
+    return &part;
+}
+
+BodyPart* AnatomySystem::determineHitLocation(AnatomyComponent* anatomy, float localX, float localY) {
+    if (!anatomy) return nullptr;
+
+    // Check against all root body parts
+    for (int i = 0; i < (int)anatomy->body_parts.size(); ++i) {
+        BodyPart& part = anatomy->body_parts[i];
+
+        if (part.parent_index == -1) { // Root part
+            float partLocalX = localX - part.relative_x;
+            float partLocalY = localY - part.relative_y;
+
+            BodyPart* hit = checkHitRecursive(*anatomy, i, partLocalX, partLocalY);
+            if (hit) {
+                return hit;
+            }
+        }
+    }
+
+    return nullptr;
+}
