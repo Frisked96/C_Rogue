@@ -19,9 +19,7 @@ void PhysiologySystem::processEntity(Entity *entity, AnatomyComponent *anatomy,
   processHealing(anatomy);
 }
 
-// -----------------------------------------------------------------------------
 // Circulation & Bleeding
-// -----------------------------------------------------------------------------
 
 void PhysiologySystem::processCirculation(AnatomyComponent *anatomy,
                                           HealthComponent *health) {
@@ -72,9 +70,7 @@ void PhysiologySystem::processCirculation(AnatomyComponent *anatomy,
   }
 }
 
-// -----------------------------------------------------------------------------
 // Respiration & Oxygen
-// -----------------------------------------------------------------------------
 void PhysiologySystem::processRespiration(AnatomyComponent *anatomy) {
   if (!anatomy->physiology_config.needs_oxygen)
     return;
@@ -121,9 +117,7 @@ void PhysiologySystem::processRespiration(AnatomyComponent *anatomy) {
   }
 }
 
-// -----------------------------------------------------------------------------
 // Metabolism
-// -----------------------------------------------------------------------------
 void PhysiologySystem::processMetabolism(AnatomyComponent *anatomy,
                                          HealthComponent *health) {
   if (!anatomy->physiology_config.has_metabolism)
@@ -140,9 +134,7 @@ void PhysiologySystem::processMetabolism(AnatomyComponent *anatomy,
   }
 }
 
-// -----------------------------------------------------------------------------
 // Pain
-// -----------------------------------------------------------------------------
 void PhysiologySystem::processPain(AnatomyComponent *anatomy) {
   if (!anatomy->physiology_config.feels_pain)
     return;
@@ -159,9 +151,7 @@ void PhysiologySystem::processPain(AnatomyComponent *anatomy) {
   anatomy->accumulated_pain = totalPain;
 }
 
-// -----------------------------------------------------------------------------
 // Stress & Adrenaline
-// -----------------------------------------------------------------------------
 void PhysiologySystem::processStress(AnatomyComponent *anatomy) {
   if (!anatomy->physiology_config.has_nervous_system)
     return;
@@ -214,9 +204,7 @@ void PhysiologySystem::processStress(AnatomyComponent *anatomy) {
   }
 }
 
-// -----------------------------------------------------------------------------
 // Healing
-// -----------------------------------------------------------------------------
 void PhysiologySystem::processHealing(AnatomyComponent *anatomy) {
   if (!anatomy->physiology_config.has_metabolism)
     return;
@@ -253,9 +241,7 @@ void PhysiologySystem::processHealing(AnatomyComponent *anatomy) {
   }
 }
 
-// -----------------------------------------------------------------------------
 // Helpers
-// -----------------------------------------------------------------------------
 float PhysiologySystem::calculateFunctionEfficiency(AnatomyComponent *anatomy,
                                                     const std::string &tag) {
   float totalEfficiency = 0.0f;
