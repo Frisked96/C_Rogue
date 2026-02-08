@@ -22,6 +22,7 @@ struct BodyTemplatePart {
 
     // Hierarchy
     std::string parent_name; // "ROOT" if no parent
+    int parent_index = -1;   // -1 if using name, otherwise index into parts vector
     float relative_x = 0.0f;
     float relative_y = 0.0f;
     float relative_z = 0.0f;

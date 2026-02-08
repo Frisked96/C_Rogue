@@ -2,6 +2,11 @@
 #include "anatomy_components.hpp"
 #include "biological_tags.hpp"
 #include "components.hpp"
+#include "components/limb.hpp"
+#include "components/heart.hpp"
+#include "components/lung.hpp"
+#include "components/brain.hpp"
+#include "components/eye.hpp"
 #include <memory>
 #include <vector>
 
@@ -18,92 +23,42 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     // Default PhysiologyConfig is already human-like
 
     // 1. Torso (Root)
-    BodyTemplatePart torso("Torso", "ROOT", 50, BodyPartType::GENERIC);
-    torso.width = 0.6f;
-    torso.height = 0.8f;
-    torso.depth = 0.3f;
-    torso.is_vital = true;
-    t.addPart(torso);
+    auto torso = Limb::create("Torso", LimbType::NONE, 50, 0.6f, 0.8f, 0.3f);
+    torso->self.is_vital = true;
 
-    // 2. Head (Root, visually attached to top of torso area but logically separate root in old code?
-    // In old code: head.relative_y = -0.6f; parent_index = -1 (implicit).
-    // So yes, "ROOT".
-    BodyTemplatePart head("Head", "ROOT", 20, BodyPartType::LIMB);
-    head.limb_type = LimbType::HEAD;
-    head.width = 0.3f;
-    head.height = 0.3f;
-    head.depth = 0.25f;
-    head.relative_y = -0.6f;
-    head.is_vital = true;
-    t.addPart(head);
+    // Organs in Torso
+    torso->addInternalPart(Heart::createBiological());
+    torso->addInternalPart(Lung::createHuman("Left Lung"));
+    torso->addInternalPart(Lung::createHuman("Right Lung"));
 
-    // 3. Organs inside Torso
-    BodyTemplatePart heart("Heart", "Torso", 10, BodyPartType::ORGAN);
-    heart.organ_type = OrganType::HEART;
-    heart.width = 0.15f;
-    heart.height = 0.15f;
-    heart.depth = 0.15f;
-    heart.is_vital = true;
-    heart.tags.push_back(BioTags::CIRCULATION);
-    t.addPart(heart);
+    // 2. Head
+    auto head = Limb::create("Head", LimbType::HEAD, 20, 0.3f, 0.3f, 0.25f);
+    head->self.is_vital = true;
 
-    BodyTemplatePart lungs("Lungs", "Torso", 15, BodyPartType::ORGAN);
-    lungs.organ_type = OrganType::LUNG;
-    lungs.width = 0.2f;
-    lungs.height = 0.2f;
-    lungs.depth = 0.2f;
-    lungs.is_vital = true;
-    lungs.tags.push_back(BioTags::RESPIRATION);
-    t.addPart(lungs);
+    // Organs in Head
+    head->addInternalPart(Brain::createHuman());
+    head->addInternalPart(Eye::createHuman("Left Eye"), -0.05f, 0.05f, 0.1f);
+    head->addInternalPart(Eye::createHuman("Right Eye"), 0.05f, 0.05f, 0.1f);
 
-    // 4. Brain inside Head
-    BodyTemplatePart brain("Brain", "Head", 5, BodyPartType::ORGAN);
-    brain.organ_type = OrganType::BRAIN;
-    brain.width = 0.1f;
-    brain.height = 0.1f;
-    brain.depth = 0.1f;
-    brain.is_vital = true;
-    brain.tags.push_back(BioTags::NEURAL);
-    t.addPart(brain);
+    // Attach Head to Torso
+    torso->addChildLimb(head, 0.0f, -0.6f, 0.0f);
 
-    // 5. Limbs
-    // Left Arm
-    BodyTemplatePart lArm("Left Arm", "ROOT", 30, BodyPartType::LIMB);
-    lArm.limb_type = LimbType::ARM;
-    lArm.width = 0.2f;
-    lArm.height = 0.7f;
-    lArm.depth = 0.15f;
-    lArm.relative_x = -0.5f;
-    t.addPart(lArm);
+    // 3. Arms
+    auto lArm = Limb::create("Left Arm", LimbType::ARM, 30, 0.2f, 0.7f, 0.15f);
+    torso->addChildLimb(lArm, -0.5f, 0.0f, 0.0f);
 
-    // Right Arm
-    BodyTemplatePart rArm("Right Arm", "ROOT", 30, BodyPartType::LIMB);
-    rArm.limb_type = LimbType::ARM;
-    rArm.width = 0.2f;
-    rArm.height = 0.7f;
-    rArm.depth = 0.15f;
-    rArm.relative_x = 0.5f;
-    t.addPart(rArm);
+    auto rArm = Limb::create("Right Arm", LimbType::ARM, 30, 0.2f, 0.7f, 0.15f);
+    torso->addChildLimb(rArm, 0.5f, 0.0f, 0.0f);
 
-    // Left Leg
-    BodyTemplatePart lLeg("Left Leg", "ROOT", 30, BodyPartType::LIMB);
-    lLeg.limb_type = LimbType::LEG;
-    lLeg.width = 0.2f;
-    lLeg.height = 0.8f;
-    lLeg.depth = 0.15f;
-    lLeg.relative_x = -0.2f;
-    lLeg.relative_y = 0.6f;
-    t.addPart(lLeg);
+    // 4. Legs
+    auto lLeg = Limb::create("Left Leg", LimbType::LEG, 30, 0.2f, 0.8f, 0.15f);
+    torso->addChildLimb(lLeg, -0.2f, 0.6f, 0.0f);
 
-    // Right Leg
-    BodyTemplatePart rLeg("Right Leg", "ROOT", 30, BodyPartType::LIMB);
-    rLeg.limb_type = LimbType::LEG;
-    rLeg.width = 0.2f;
-    rLeg.height = 0.8f;
-    rLeg.depth = 0.15f;
-    rLeg.relative_x = 0.2f;
-    rLeg.relative_y = 0.6f;
-    t.addPart(rLeg);
+    auto rLeg = Limb::create("Right Leg", LimbType::LEG, 30, 0.2f, 0.8f, 0.15f);
+    torso->addChildLimb(rLeg, 0.2f, 0.6f, 0.0f);
+
+    // Flatten hierarchy into template
+    torso->flatten(t);
 
     return t;
 }
@@ -151,12 +106,17 @@ Entity *EntityFactory::createFromTemplate(int x, int y, const BodyTemplate &body
   // Pass 2: Resolve Hierarchy
   for (int i = 0; i < (int)bodyTemplate.parts.size(); ++i) {
       const auto &tp = bodyTemplate.parts[i];
-      if (tp.parent_name != "ROOT" && !tp.parent_name.empty()) {
-          int parentIdx = anatomy.getBodyPartIndex(tp.parent_name);
-          if (parentIdx != -1) {
-              anatomy.body_parts[i].parent_index = parentIdx;
-              anatomy.body_parts[parentIdx].children_indices.push_back(i);
-          }
+      int parentIdx = -1;
+
+      if (tp.parent_index != -1) {
+          parentIdx = tp.parent_index;
+      } else if (tp.parent_name != "ROOT" && !tp.parent_name.empty()) {
+          parentIdx = anatomy.getBodyPartIndex(tp.parent_name);
+      }
+
+      if (parentIdx != -1 && parentIdx < (int)anatomy.body_parts.size()) {
+          anatomy.body_parts[i].parent_index = parentIdx;
+          anatomy.body_parts[parentIdx].children_indices.push_back(i);
       }
   }
 
