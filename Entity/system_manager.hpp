@@ -4,6 +4,7 @@
 #include "physiology_system.hpp"
 #include "damage_resolution_system.hpp"
 #include "spatial_system.hpp"
+#include <unordered_set>
 
 /**
  * @brief Aggregates all systems and provides a unified interface for the game world.
@@ -47,9 +48,15 @@ public:
     void onEntityMoved(Entity* entity, int oldX, int oldY, int newX, int newY) override;
     void onEntityDestroyed(Entity* entity) override;
 
+    // Hybrid Update Management
+    void markActive(int entityId);
+    void markInactive(int entityId);
+
 private:
     AnatomySystem anatomy;
     PhysiologySystem physiology;
     DamageResolutionSystem damageResolution;
     SpatialGrid spatialGrid;
+
+    std::unordered_set<int> active_anatomy_entities; // Entities needing updates this turn
 };

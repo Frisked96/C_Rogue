@@ -2,6 +2,7 @@
 #include "components.hpp"
 #include "anatomy_components.hpp"
 #include <memory>
+#include <vector>
 
 EntityFactory::EntityFactory(EntityManager& em) : entityManager(em) {}
 
@@ -11,52 +12,92 @@ Entity* EntityFactory::createPlayer(int x, int y, const std::string& name, char 
 
     // Add components that define a player
     entity->addComponent<PositionComponent>(x, y);
-    entity->addComponent<RenderComponent>(glyph);
+    entity->addComponent<RenderComponent>(glyph); // Z-index not supported in this component version
     entity->addComponent<NameComponent>(name);
-    entity->addComponent<BlockingComponent>();
-    entity->addComponent<FactionComponent>(FactionComponent::Faction::PLAYER, false);
+    entity->addComponent<BlockingComponent>(); // No args needed for tag component
     
     // Add health component (standard for player)
-    entity->addComponent<HealthComponent>(100);
+    auto& health = entity->addComponent<HealthComponent>(100);
 
-    // Setup Anatomy
+    // Setup Anatomy with flat structure
     auto& anatomy = entity->addComponent<AnatomyComponent>();
 
-    // 1. Torso (Root Container) - Center of body
-    auto torso = std::make_unique<BodyPart>("Torso", 50, true, false, 0.0f, 0.0f, 0.6f, 0.8f);
+    // 1. Torso (Root)
+    BodyPart torso("Torso", 50, true);
+    torso.width = 0.6f;
+    torso.height = 0.8f;
+    int torsoIdx = anatomy.addBodyPart(torso);
 
-    // Add Heart inside Torso
-    auto heart = std::make_unique<Organ>("Heart", Organ::Type::Heart, 10, -0.1f, -0.1f, 0.15f, 0.15f, true);
-    torso->addInternalPart(std::move(heart));
+    // 2. Head (Root)
+    BodyPart head("Head", 20, true); // Vital
+    head.type = BodyPartType::LIMB;
+    head.limb_type = LimbType::HEAD;
+    head.width = 0.3f;
+    head.height = 0.3f;
+    head.relative_y = -0.6f;
+    int headIdx = anatomy.addBodyPart(head);
 
-    // Add Lungs inside Torso
-    auto lungs = std::make_unique<Organ>("Lungs", Organ::Type::Lung, 15, 0.1f, -0.1f, 0.2f, 0.2f, true);
-    torso->addInternalPart(std::move(lungs));
+    // 3. Organs inside Torso
+    BodyPart heart("Heart", 10, true);
+    heart.type = BodyPartType::ORGAN;
+    heart.organ_type = OrganType::HEART;
+    heart.width = 0.15f;
+    heart.height = 0.15f;
+    anatomy.addChildPart(torsoIdx, heart);
 
-    anatomy.addBodyPart(std::move(torso));
+    BodyPart lungs("Lungs", 15, true);
+    lungs.type = BodyPartType::ORGAN;
+    lungs.organ_type = OrganType::LUNG;
+    lungs.width = 0.2f;
+    lungs.height = 0.2f;
+    anatomy.addChildPart(torsoIdx, lungs);
 
-    // 2. Head (Root Container)
-    auto head = std::make_unique<Limb>("Head", Limb::Type::HEAD, 20, 0.0f, -0.6f, 0.3f, 0.3f, 1.0f, 1.0f, true);
+    // 4. Brain inside Head
+    BodyPart brain("Brain", 5, true);
+    brain.type = BodyPartType::ORGAN;
+    brain.organ_type = OrganType::BRAIN;
+    brain.width = 0.1f;
+    brain.height = 0.1f;
+    anatomy.addChildPart(headIdx, brain);
 
-    // Brain inside Head
-    auto brain = std::make_unique<Organ>("Brain", Organ::Type::Brain, 5, 0.0f, 0.0f, 0.1f, 0.1f, true);
-    head->addInternalPart(std::move(brain));
+    // 5. Limbs
+    // Left Arm
+    BodyPart lArm("Left Arm", 30);
+    lArm.type = BodyPartType::LIMB;
+    lArm.limb_type = LimbType::ARM;
+    lArm.width = 0.2f;
+    lArm.height = 0.7f;
+    lArm.relative_x = -0.5f;
+    anatomy.addBodyPart(lArm);
 
-    anatomy.addBodyPart(std::move(head));
+    // Right Arm
+    BodyPart rArm("Right Arm", 30);
+    rArm.type = BodyPartType::LIMB;
+    rArm.limb_type = LimbType::ARM;
+    rArm.width = 0.2f;
+    rArm.height = 0.7f;
+    rArm.relative_x = 0.5f;
+    anatomy.addBodyPart(rArm);
 
-    // 3. Arms
-    auto leftArm = std::make_unique<Limb>("Left Arm", Limb::Type::ARM, 30, -0.5f, 0.0f, 0.2f, 0.7f);
-    anatomy.addBodyPart(std::move(leftArm));
+    // Left Leg
+    BodyPart lLeg("Left Leg", 30);
+    lLeg.type = BodyPartType::LIMB;
+    lLeg.limb_type = LimbType::LEG;
+    lLeg.width = 0.2f;
+    lLeg.height = 0.8f;
+    lLeg.relative_x = -0.2f;
+    lLeg.relative_y = 0.6f;
+    anatomy.addBodyPart(lLeg);
 
-    auto rightArm = std::make_unique<Limb>("Right Arm", Limb::Type::ARM, 30, 0.5f, 0.0f, 0.2f, 0.7f);
-    anatomy.addBodyPart(std::move(rightArm));
-
-    // 4. Legs
-    auto leftLeg = std::make_unique<Limb>("Left Leg", Limb::Type::LEG, 30, -0.2f, 0.6f, 0.2f, 0.8f);
-    anatomy.addBodyPart(std::move(leftLeg));
-
-    auto rightLeg = std::make_unique<Limb>("Right Leg", Limb::Type::LEG, 30, 0.2f, 0.6f, 0.2f, 0.8f);
-    anatomy.addBodyPart(std::move(rightLeg));
+    // Right Leg
+    BodyPart rLeg("Right Leg", 30);
+    rLeg.type = BodyPartType::LIMB;
+    rLeg.limb_type = LimbType::LEG;
+    rLeg.width = 0.2f;
+    rLeg.height = 0.8f;
+    rLeg.relative_x = 0.2f;
+    rLeg.relative_y = 0.6f;
+    anatomy.addBodyPart(rLeg);
 
     return entity;
 }

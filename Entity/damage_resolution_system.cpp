@@ -98,10 +98,22 @@ BodyPart* DamageResolutionSystem::selectTargetPart(AnatomyComponent* anatomy, Da
     std::vector<BodyPart*> candidates;
     std::vector<float> weights;
 
-    for (const auto& part : anatomy->body_parts) {
-        candidates.push_back(part.get());
-        weights.push_back(part->getTargetWeight());
+    // Only consider root parts (or large surface area parts) initially?
+    // Or consider all parts? Let's consider all parts for simplicity first, weighted by size.
+    // However, internal organs shouldn't be hit directly unless penetration happens.
+    // So filter for parts with no parent (root) or parts that are explicitly "external".
+    // For now, let's assume all parts are candidates but weight them.
+    // Actually, hitting the Heart directly without hitting Chest is wrong.
+    // So we should select from Root parts, then drill down.
+
+    for (auto& part : anatomy->body_parts) {
+        if (part.parent_index == -1) { // Root parts (Torso, Head, Limbs usually)
+            candidates.push_back(&part);
+            weights.push_back(part.getTargetWeight());
+        }
     }
+
+    if (candidates.empty()) return nullptr;
 
     std::discrete_distribution<int> dist(weights.begin(), weights.end());
     BodyPart* selected = candidates[dist(rng)];
@@ -112,13 +124,19 @@ BodyPart* DamageResolutionSystem::selectTargetPart(AnatomyComponent* anatomy, Da
     
     std::uniform_real_distribution<float> roll(0.0f, 1.0f);
     
-    while (!selected->internal_parts.empty() && roll(rng) < internalChance) {
+    // Drill down into children
+    while (!selected->children_indices.empty() && roll(rng) < internalChance) {
         std::vector<BodyPart*> internals;
         std::vector<float> internalWeights;
-        for (const auto& internal : selected->internal_parts) {
-            internals.push_back(internal.get());
-            internalWeights.push_back(internal->getTargetWeight());
+
+        for (int childIdx : selected->children_indices) {
+            BodyPart& child = anatomy->body_parts[childIdx];
+            internals.push_back(&child);
+            internalWeights.push_back(child.getTargetWeight());
         }
+
+        if (internals.empty()) break;
+
         std::discrete_distribution<int> iDist(internalWeights.begin(), internalWeights.end());
         selected = internals[iDist(rng)];
         
@@ -173,6 +191,14 @@ void DamageResolutionSystem::applySecondaryEffects(BodyPart* part, const DamageI
 }
 
 void DamageResolutionSystem::handleDamageOverflow(Entity* entity, BodyPart* part, float excessDamage) {
-    // In a more complex system, we would find the parent part.
-    // For now, apply directly to HealthComponent which we already did in resolveAttack.
+    // In a flat system, we can look up parent index directly
+    if (part->parent_index != -1) {
+        // Apply half of excess damage to parent?
+        // We'd need access to anatomy component here, but we only have part* and entity*.
+        // Entity* has anatomy.
+        if (auto* anatomy = entity->getComponent<AnatomyComponent>()) {
+             BodyPart& parent = anatomy->body_parts[part->parent_index];
+             parent.takeDamage(static_cast<int>(excessDamage * 0.5f));
+        }
+    }
 }

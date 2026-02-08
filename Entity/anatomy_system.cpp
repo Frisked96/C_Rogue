@@ -1,5 +1,7 @@
 #include "anatomy_system.hpp"
+#include "anatomy_components.hpp"
 #include "components.hpp"
+#include "entity.hpp"
 #include <cstdlib>
 
 void AnatomySystem::processEntity(Entity* entity) {
@@ -20,16 +22,8 @@ void AnatomySystem::processEntity(Entity* entity) {
 }
 
 void AnatomySystem::aggregateStatus(AnatomyComponent* anatomy, float& totalPain) {
-    for (auto& part : anatomy->body_parts) {
-        aggregatePartStatus(part.get(), totalPain);
-    }
-}
-
-void AnatomySystem::aggregatePartStatus(BodyPart* part, float& totalPain) {
-    totalPain += part->pain_level;
-    // We could also aggregate average arterial integrity if needed for physiology
-    for (auto& internal : part->internal_parts) {
-        aggregatePartStatus(internal.get(), totalPain);
+    for (const auto& part : anatomy->body_parts) {
+        totalPain += part.pain_level;
     }
 }
 
@@ -51,10 +45,18 @@ void AnatomySystem::updateLimbStatus(AnatomyComponent* anatomy) {
     // For example, if arm strength drops due to damage?
     // Currently BodyPart::takeDamage handles is_functional logic.
     // We could add complex logic here like: if parent limb is dead, child limb is useless.
-    // But our structure is nested, so if parent is destroyed, we generally can't access children well logically
-    // (though they exist in the vector).
+    // In flat structure, we can iterate and check parent
     
-    // Todo: Implement cascading failure if desired.
+    for (auto& part : anatomy->body_parts) {
+        if (part.parent_index != -1) {
+            // If parent is not functional, child is also not functional (e.g. severed arm -> hand useless)
+            // Note: This requires parent to be processed before child or multiple passes if indices are unordered.
+            // Assuming factory creates parents first (smaller index).
+            if (!anatomy->body_parts[part.parent_index].is_functional) {
+                part.is_functional = false;
+            }
+        }
+    }
 }
 
 float AnatomySystem::calculateReach(Entity* entity) {
@@ -64,11 +66,8 @@ float AnatomySystem::calculateReach(Entity* entity) {
     auto* anatomy = entity->getAnatomy();
     
     // Find functional arms
-    for (auto& part : anatomy->body_parts) {
-        // Assuming Arms are root parts or check recursively
-        // Our Player setup puts Arms as root parts.
-        auto* limb = dynamic_cast<Limb*>(part.get());
-        if (limb && limb->limb_type == Limb::Type::ARM && limb->is_functional) {
+    for (const auto& part : anatomy->body_parts) {
+        if (part.type == BodyPartType::LIMB && part.limb_type == LimbType::ARM && part.is_functional) {
              // Basic reach is 1.0 + potentially weapon length?
              // For now, return 1.5 for a working arm, 1.0 otherwise
              maxReach = std::max(maxReach, 1.5f);
@@ -78,36 +77,26 @@ float AnatomySystem::calculateReach(Entity* entity) {
     return maxReach > 0.0f ? maxReach : 1.0f; // Minimal reach if no arms? (Bite?)
 }
 
-// Helper to find legs recursively
-void collectLegs(BodyPart* part, std::vector<Limb*>& legs) {
-    auto* limb = dynamic_cast<Limb*>(part);
-    if (limb && limb->limb_type == Limb::Type::LEG) {
-        legs.push_back(limb);
-    }
-    for (auto& internal : part->internal_parts) {
-        collectLegs(internal.get(), legs);
-    }
-}
-
 float AnatomySystem::calculateMovementFactor(Entity* entity) {
     if (!entity->hasAnatomy()) return 1.0f;
 
     auto* anatomy = entity->getAnatomy();
-    std::vector<Limb*> legs;
-    
-    for (auto& part : anatomy->body_parts) {
-        collectLegs(part.get(), legs);
-    }
-
-    if (legs.empty()) return 1.0f; // No legs defined, assume flying or snake? :P
-
+    int totalLegs = 0;
     int functionalLegs = 0;
-    for (auto* leg : legs) {
-        if (leg->is_functional) functionalLegs++;
+    
+    for (const auto& part : anatomy->body_parts) {
+        if (part.type == BodyPartType::LIMB && part.limb_type == LimbType::LEG) {
+            totalLegs++;
+            if (part.is_functional) {
+                functionalLegs++;
+            }
+        }
     }
+
+    if (totalLegs == 0) return 1.0f; // No legs defined, assume flying or snake? :P
 
     if (functionalLegs == 0) return 0.0f; // Cant move
-    if (functionalLegs < legs.size()) return 0.5f; // Hobble
+    if (functionalLegs < totalLegs) return 0.5f; // Hobble
 
     return 1.0f;
 }
@@ -123,7 +112,7 @@ bool AnatomySystem::inflictWound(Entity* target, const std::string& partName, in
     }
 
     auto* anatomy = target->getAnatomy();
-    BodyPart* part = anatomy->getBodyPart(partName); // Using existing helper
+    BodyPart* part = anatomy->getBodyPart(partName);
 
     if (part) {
         part->takeDamage(damage);

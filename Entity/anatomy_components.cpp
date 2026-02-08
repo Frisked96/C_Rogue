@@ -1,34 +1,5 @@
 #include "anatomy_components.hpp"
 
-// Recursive helper to find a part
-BodyPart* findPartRecursive(const std::vector<std::unique_ptr<BodyPart>>& parts, const std::string& name) {
-    for (const auto& part : parts) {
-        if (part->name == name) {
-            return part.get();
-        }
-        // Check children
-        if (!part->internal_parts.empty()) {
-            if (auto* found = findPartRecursive(part->internal_parts, name)) {
-                return found;
-            }
-        }
-    }
-    return nullptr;
-}
-
-// Recursive helper to check functionality
-bool checkVitalRecursive(const std::vector<std::unique_ptr<BodyPart>>& parts) {
-    for (const auto& part : parts) {
-        if (part->is_vital && !part->canFunction()) {
-            return false;
-        }
-        if (!checkVitalRecursive(part->internal_parts)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 std::unique_ptr<Component> AnatomyComponent::clone() const {
   auto copy = std::make_unique<AnatomyComponent>();
   copy->blood_volume = blood_volume;
@@ -38,23 +9,51 @@ std::unique_ptr<Component> AnatomyComponent::clone() const {
   copy->hydration = hydration;
   copy->accumulated_pain = accumulated_pain;
   
-  for (const auto &part : body_parts) {
-    copy->addBodyPart(part->clonePart());
-  }
+  // Directly copy the vector since BodyPart is now a simple struct-like class
+  copy->body_parts = body_parts;
   return copy;
 }
 
-void AnatomyComponent::addBodyPart(std::unique_ptr<BodyPart> part) {
-  body_parts.push_back(std::move(part));
+int AnatomyComponent::addBodyPart(const BodyPart& part) {
+    body_parts.push_back(part);
+    return body_parts.size() - 1;
+}
+
+int AnatomyComponent::addChildPart(int parentIndex, const BodyPart& part) {
+    if (parentIndex < 0 || parentIndex >= body_parts.size()) return -1;
+
+    int childIndex = addBodyPart(part);
+    body_parts[childIndex].parent_index = parentIndex;
+    body_parts[parentIndex].children_indices.push_back(childIndex);
+
+    return childIndex;
 }
 
 BodyPart *AnatomyComponent::getBodyPart(const std::string &name) {
-  return findPartRecursive(body_parts, name);
+  for (auto& part : body_parts) {
+      if (part.name == name) {
+          return &part;
+      }
+  }
+  return nullptr;
+}
+
+int AnatomyComponent::getBodyPartIndex(const std::string &name) {
+  for (int i = 0; i < body_parts.size(); ++i) {
+      if (body_parts[i].name == name) {
+          return i;
+      }
+  }
+  return -1;
 }
 
 bool AnatomyComponent::isFunctional() const {
-  // Check all vital organs recursively
-  return checkVitalRecursive(body_parts);
+  for (const auto& part : body_parts) {
+      if (part.is_vital && !part.canFunction()) {
+          return false;
+      }
+  }
+  return true;
 }
 
 void AnatomyComponent::takeDamageToBodyPart(const std::string &part_name,

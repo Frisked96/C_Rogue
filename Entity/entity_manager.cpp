@@ -1,7 +1,7 @@
 #include "entity_manager.hpp"
 #include <typeinfo>
 
-EntityManager::EntityManager() {}
+EntityManager::EntityManager() : externalListener(nullptr) {}
 
 EntityManager::~EntityManager() {
   entities.clear();
@@ -9,16 +9,17 @@ EntityManager::~EntityManager() {
 }
 
 Entity *EntityManager::createEntity() {
+  // Check pool first
   if (!pool.empty()) {
     auto uptr = std::move(pool.back());
     pool.pop_back();
     Entity *ptr = uptr.get();
-    // Reset state and generate new ID
-    ptr->reset();
+    ptr->reset(); // Reset state
     addEntity(std::move(uptr));
     return ptr;
   }
 
+  // Create new
   auto uptr = std::make_unique<Entity>();
   Entity *ptr = uptr.get();
   addEntity(std::move(uptr));
@@ -26,10 +27,10 @@ Entity *EntityManager::createEntity() {
 }
 
 void EntityManager::addEntity(std::unique_ptr<Entity> entity) {
-  if (entity) {
-    entity->setListener(this);
-    entities[entity->getId()] = std::move(entity);
-  }
+    if (entity) {
+        entity->setListener(this);
+        entities[entity->getId()] = std::move(entity);
+    }
 }
 
 void EntityManager::destroyEntity(int id) {
@@ -37,24 +38,40 @@ void EntityManager::destroyEntity(int id) {
   if (it != entities.end()) {
     Entity *ptr = it->second.get();
 
-    // Notify listener for cleanup
+    // Notify listener for cleanup (SystemManager usually)
     if (externalListener) {
       externalListener->onEntityDestroyed(ptr);
     }
 
-    // Check if it's a base Entity to pool it
-    // Only pool generic entities to avoid object slicing/polymorphic confusion
+    // Reuse if it is a plain Entity
     if (typeid(*ptr) == typeid(Entity)) {
-      // Move to pool
-      pool.push_back(std::move(it->second));
+       pool.push_back(std::move(it->second));
     }
-    // If it's a Player or other subclass, it will be destroyed when erased
 
     entities.erase(it);
   }
 }
 
-// ... (getEntity and getEntitiesMatching)
+Entity* EntityManager::getEntity(int id) {
+    auto it = entities.find(id);
+    if (it != entities.end()) {
+        return it->second.get();
+    }
+    return nullptr;
+}
+
+std::vector<Entity *> EntityManager::getEntitiesMatching(Signature mask) {
+    std::vector<Entity*> results;
+    for (auto& pair : entities) {
+        Entity* e = pair.second.get();
+        if ((e->getSignature() & mask) == mask) {
+            results.push_back(e);
+        }
+    }
+    return results;
+}
+
+// IEntityListener Implementation
 
 void EntityManager::onEntitySignatureChanged(Entity *entity,
                                              Signature newSignature) {

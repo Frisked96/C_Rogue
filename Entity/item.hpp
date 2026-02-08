@@ -64,7 +64,7 @@ public:
     float leverage_bonus;  // Multiplier for accuracy or strength-based interactions
     float speed_penalty;   // Larger weapons might be slower to swing
 
-    Weapon(const std::string& name, float dmg, DamageType type = DamageType::SLASHING, float rch = 1.0f, int weight = 5)
+    Weapon(const std::string& name, float dmg, DamageType type = DamageType::SHARP, float rch = 1.0f, int weight = 5)
         : Item(name, ItemType::WEAPON, weight), damage(dmg), damage_type(type), 
           reach(rch), leverage_bonus(1.0f), speed_penalty(0.0f) {}
 
