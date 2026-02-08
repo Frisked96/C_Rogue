@@ -37,8 +37,7 @@ public:
 
   TypeId getTypeId() const override { return getStaticTypeId(); }
 
-  // default clone implementation returns nullptr. Subclasses with data should override if cloning is needed.
-  std::unique_ptr<Component> clone() const override {
-    return nullptr;
-  }
+  // default clone implementation returns nullptr. Subclasses with data should
+  // override if cloning is needed.
+  std::unique_ptr<Component> clone() const override { return nullptr; }
 };

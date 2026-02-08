@@ -27,13 +27,15 @@ private:
   std::vector<std::unique_ptr<Entity>> pool;
 
   // External listener (e.g. SystemManager)
-  IEntityListener* externalListener = nullptr;
+  IEntityListener *externalListener = nullptr;
 
 public:
   EntityManager();
   ~EntityManager();
 
-  void setExternalListener(IEntityListener* listener) { externalListener = listener; }
+  void setExternalListener(IEntityListener *listener) {
+    externalListener = listener;
+  }
 
   // Factory methods
   Entity *createEntity();

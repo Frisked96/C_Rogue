@@ -1,4 +1,5 @@
 #pragma once
+#include "event.hpp"
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -6,18 +7,12 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
-#include "event.hpp"
 
 /**
  * @brief Priority levels for events.
  * Higher priority events are processed first.
  */
-enum class EventPriority {
-  LOW = 0,
-  NORMAL = 1,
-  HIGH = 2,
-  CRITICAL = 3
-};
+enum class EventPriority { LOW = 0, NORMAL = 1, HIGH = 2, CRITICAL = 3 };
 
 /**
  * @brief Internal interface for event handlers to allow polymorphic storage.
@@ -34,9 +29,9 @@ public:
 template <typename T> class EventHandler : public IEventHandler {
 public:
   using Callback = std::function<void(const T &)>;
-  
+
   EventHandler(Callback cb) : callback(cb) {}
-  
+
   void exec(const Event &event) override {
     callback(static_cast<const T &>(event));
   }
@@ -63,10 +58,11 @@ struct QueuedEvent {
     if (priority != other.priority) {
       return priority < other.priority;
     }
-    // For same priority, use sequence to maintain FIFO (smaller sequence = earlier)
-    // std::push_heap/pop_heap creates a max-heap, so we want the smallest sequence
-    // to be "greater" in priority if we want it processed first.
-    return sequence > other.sequence; 
+    // For same priority, use sequence to maintain FIFO (smaller sequence =
+    // earlier) std::push_heap/pop_heap creates a max-heap, so we want the
+    // smallest sequence to be "greater" in priority if we want it processed
+    // first.
+    return sequence > other.sequence;
   }
 };
 
@@ -87,8 +83,10 @@ public:
    * @tparam T The event type to subscribe to.
    * @param callback The function to call when the event occurs.
    */
-  template <typename T> void subscribe(std::function<void(const T &)> callback) {
-    subscribers[typeid(T)].push_back(std::make_unique<EventHandler<T>>(callback));
+  template <typename T>
+  void subscribe(std::function<void(const T &)> callback) {
+    subscribers[typeid(T)].push_back(
+        std::make_unique<EventHandler<T>>(callback));
   }
 
   /**
@@ -99,7 +97,8 @@ public:
    * @param memberFunction Pointer to the member function.
    */
   template <typename T, typename Instance>
-  void subscribe(Instance *instance, void (Instance::*memberFunction)(const T &)) {
+  void subscribe(Instance *instance,
+                 void (Instance::*memberFunction)(const T &)) {
     subscribe<T>([instance, memberFunction](const T &event) {
       (instance->*memberFunction)(event);
     });

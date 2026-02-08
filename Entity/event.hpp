@@ -10,7 +10,7 @@ struct Event {
 
 /**
  * @brief Helper template to create concrete event types.
- * 
+ *
  * Usage:
  * struct MyEvent : public BaseEvent<MyEvent> {
  *   int data;

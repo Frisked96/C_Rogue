@@ -23,10 +23,10 @@ public:
   bool is_vital;
   bool is_immune_to_poison;
   bool is_functional;
-  int bleeding_intensity; // Damage per turn due to bleeding
-  float pain_level;       // 0.0 to 100.0
+  int bleeding_intensity;   // Damage per turn due to bleeding
+  float pain_level;         // 0.0 to 100.0
   float arterial_integrity; // 1.0 = intact, 0.0 = severed
-  int armor_value;        // Damage reduction
+  int armor_value;          // Damage reduction
 
   // Spatial information relative to parent
   float relative_x;
@@ -57,8 +57,8 @@ public:
         armor_value(0), relative_x(0), relative_y(0), width(0), height(0),
         parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f) {}
 
-  BodyPart(const std::string &name, int hp, bool vital = false,
-           int armor = 0, float w = 0.5f, float h = 0.5f)
+  BodyPart(const std::string &name, int hp, bool vital = false, int armor = 0,
+           float w = 0.5f, float h = 0.5f)
       : name(name), type(BodyPartType::GENERIC), limb_type(LimbType::NONE),
         organ_type(OrganType::NONE), max_hitpoints(hp), current_hitpoints(hp),
         is_vital(vital), is_immune_to_poison(false), is_functional(true),
@@ -68,9 +68,7 @@ public:
 
   float getTargetWeight() const { return width * height; }
 
-  bool canFunction() const {
-    return is_functional && current_hitpoints > 0;
-  }
+  bool canFunction() const { return is_functional && current_hitpoints > 0; }
 
   void takeDamage(int damage) {
     current_hitpoints -= damage;
@@ -80,7 +78,7 @@ public:
     }
     // Update efficiency for organs if damaged
     if (type == BodyPartType::ORGAN) {
-        efficiency = static_cast<float>(current_hitpoints) / max_hitpoints;
+      efficiency = static_cast<float>(current_hitpoints) / max_hitpoints;
     }
   }
 
@@ -93,19 +91,18 @@ public:
       is_functional = true;
     }
     if (type == BodyPartType::ORGAN) {
-        efficiency = static_cast<float>(current_hitpoints) / max_hitpoints;
+      efficiency = static_cast<float>(current_hitpoints) / max_hitpoints;
     }
   }
 
-  void addTag(const std::string& tag) {
-    tags.push_back(tag);
-  }
+  void addTag(const std::string &tag) { tags.push_back(tag); }
 
-  bool hasTag(const std::string& tag) const {
-      for (const auto& t : tags) {
-          if (t == tag) return true;
-      }
-      return false;
+  bool hasTag(const std::string &tag) const {
+    for (const auto &t : tags) {
+      if (t == tag)
+        return true;
+    }
+    return false;
   }
 };
 
@@ -124,18 +121,17 @@ public:
   float adrenaline_level;
 
   AnatomyComponent()
-      : blood_volume(5.0f), max_blood_volume(5.0f),
-        oxygen_saturation(100.0f), stored_energy(2000.0f),
-        hydration(100.0f), accumulated_pain(0.0f),
+      : blood_volume(5.0f), max_blood_volume(5.0f), oxygen_saturation(100.0f),
+        stored_energy(2000.0f), hydration(100.0f), accumulated_pain(0.0f),
         stress_level(0.0f), adrenaline_level(0.0f) {}
 
   std::unique_ptr<Component> clone() const override;
 
   // Add a body part (returns index)
-  int addBodyPart(const BodyPart& part);
+  int addBodyPart(const BodyPart &part);
 
   // Add a child part to a parent (returns child index)
-  int addChildPart(int parentIndex, const BodyPart& part);
+  int addChildPart(int parentIndex, const BodyPart &part);
 
   // Find a body part by name
   BodyPart *getBodyPart(const std::string &name);

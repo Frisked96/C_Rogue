@@ -5,13 +5,14 @@
 
 class EntityFactory {
 private:
-    EntityManager& entityManager;
+  EntityManager &entityManager;
 
 public:
-    EntityFactory(EntityManager& em);
+  EntityFactory(EntityManager &em);
 
-    Entity* createPlayer(int x, int y, const std::string& name = "Player", char glyph = '@');
-    
-    // Future expansion:
-    // Entity* createMonster(int x, int y, const std::string& name);
+  Entity *createPlayer(int x, int y, const std::string &name = "Player",
+                       char glyph = '@');
+
+  // Future expansion:
+  // Entity* createMonster(int x, int y, const std::string& name);
 };

@@ -1,6 +1,6 @@
 #pragma once
-#include "component.hpp"
 #include "combat_types.hpp"
+#include "component.hpp"
 #include <string>
 
 // basic components for most entities
@@ -72,11 +72,14 @@ public:
   float accuracy;
   float leverage; // New field
 
-  CombatComponent(int atk = 10, int def = 5, float rch = 1.0f, DamageType type = DamageType::BLUNT, float lev = 1.0f)
-      : attack_damage(atk), defense(def), reach(rch), preferred_damage_type(type), accuracy(1.0f), leverage(lev) {}
+  CombatComponent(int atk = 10, int def = 5, float rch = 1.0f,
+                  DamageType type = DamageType::BLUNT, float lev = 1.0f)
+      : attack_damage(atk), defense(def), reach(rch),
+        preferred_damage_type(type), accuracy(1.0f), leverage(lev) {}
 
   DamageInfo getDamageInfo() const {
-      return DamageInfo(static_cast<float>(attack_damage), preferred_damage_type, 0.0f, 2.0f, AttackType::MELEE, reach, leverage);
+    return DamageInfo(static_cast<float>(attack_damage), preferred_damage_type,
+                      0.0f, 2.0f, AttackType::MELEE, reach, leverage);
   }
 };
 

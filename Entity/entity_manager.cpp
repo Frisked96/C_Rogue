@@ -27,10 +27,10 @@ Entity *EntityManager::createEntity() {
 }
 
 void EntityManager::addEntity(std::unique_ptr<Entity> entity) {
-    if (entity) {
-        entity->setListener(this);
-        entities[entity->getId()] = std::move(entity);
-    }
+  if (entity) {
+    entity->setListener(this);
+    entities[entity->getId()] = std::move(entity);
+  }
 }
 
 void EntityManager::destroyEntity(int id) {
@@ -45,30 +45,30 @@ void EntityManager::destroyEntity(int id) {
 
     // Reuse if it is a plain Entity
     if (typeid(*ptr) == typeid(Entity)) {
-       pool.push_back(std::move(it->second));
+      pool.push_back(std::move(it->second));
     }
 
     entities.erase(it);
   }
 }
 
-Entity* EntityManager::getEntity(int id) {
-    auto it = entities.find(id);
-    if (it != entities.end()) {
-        return it->second.get();
-    }
-    return nullptr;
+Entity *EntityManager::getEntity(int id) {
+  auto it = entities.find(id);
+  if (it != entities.end()) {
+    return it->second.get();
+  }
+  return nullptr;
 }
 
 std::vector<Entity *> EntityManager::getEntitiesMatching(Signature mask) {
-    std::vector<Entity*> results;
-    for (auto& pair : entities) {
-        Entity* e = pair.second.get();
-        if ((e->getSignature() & mask) == mask) {
-            results.push_back(e);
-        }
+  std::vector<Entity *> results;
+  for (auto &pair : entities) {
+    Entity *e = pair.second.get();
+    if ((e->getSignature() & mask) == mask) {
+      results.push_back(e);
     }
-    return results;
+  }
+  return results;
 }
 
 // IEntityListener Implementation
@@ -81,7 +81,7 @@ void EntityManager::onEntitySignatureChanged(Entity *entity,
 }
 
 void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
-                                 int newY) {
+                                  int newY) {
   if (externalListener) {
     externalListener->onEntityMoved(entity, oldX, oldY, newX, newY);
   }

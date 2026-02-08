@@ -33,7 +33,8 @@ public:
 
   // Hit location determination
   // hitOffsetX/Y are relative to entity center [-0.5, 0.5]
-  BodyPart *determineHitLocation(Entity *target, float hitOffsetX, float hitOffsetY) const;
+  BodyPart *determineHitLocation(Entity *target, float hitOffsetX,
+                                 float hitOffsetY) const;
 
 private:
   std::unordered_map<long long, std::vector<Entity *>> grid;
