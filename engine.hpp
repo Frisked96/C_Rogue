@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Entity/player.hpp"
+#include "Entity/entity_manager.hpp"
+#include "Entity/entity_factory.hpp"
 #include "game_map.hpp"
 #include "input_handler.hpp"
 #include "renderer.hpp"
@@ -11,7 +12,11 @@ private:
   std::unique_ptr<Game_map> map;
   std::unique_ptr<Terminal_renderer> renderer;
   std::unique_ptr<InputHandler> input_handler;
-  std::unique_ptr<Player> player;
+
+  // ECS Integration
+  EntityManager entityManager;
+  EntityFactory entityFactory;
+  Entity *player; // Pointer managed by EntityManager
 
   bool is_running;
   int screen_width;

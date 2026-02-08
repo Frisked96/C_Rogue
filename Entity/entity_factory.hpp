@@ -1,6 +1,7 @@
 #pragma once
 
 #include "entity_manager.hpp"
+#include "body_template.hpp"
 #include <string>
 
 class EntityFactory {
@@ -13,6 +14,8 @@ public:
   Entity *createPlayer(int x, int y, const std::string &name = "Player",
                        char glyph = '@');
 
-  // Future expansion:
-  // Entity* createMonster(int x, int y, const std::string& name);
+  Entity *createFromTemplate(int x, int y, const BodyTemplate &bodyTemplate,
+                             const std::string &name, char glyph);
+
+  static BodyTemplate createHumanTemplate();
 };
