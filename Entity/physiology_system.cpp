@@ -243,7 +243,7 @@ void PhysiologySystem::processHealing(AnatomyComponent *anatomy) {
 
 // Helpers
 float PhysiologySystem::calculateFunctionEfficiency(AnatomyComponent *anatomy,
-                                                    const std::string &tag) {
+                                                    BioTags::TagType tag) {
   float totalEfficiency = 0.0f;
   int count = 0;
 

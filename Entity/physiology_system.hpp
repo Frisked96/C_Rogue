@@ -19,5 +19,5 @@ private:
   void processHealing(AnatomyComponent *anatomy);
 
   float calculateFunctionEfficiency(AnatomyComponent *anatomy,
-                                    const std::string &tag);
+                                    BioTags::TagType tag);
 };

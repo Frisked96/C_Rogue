@@ -43,18 +43,10 @@ void AnatomySystem::checkVitals(Entity *entity, AnatomyComponent *anatomy) {
 }
 
 void AnatomySystem::updateLimbStatus(AnatomyComponent *anatomy) {
-  // Logic to update derived stats based on limb health
-  // For example, if arm strength drops due to damage?
-  // Currently BodyPart::takeDamage handles is_functional logic.
-  // We could add complex logic here like: if parent limb is dead, child limb is
-  // useless. In flat structure, we can iterate and check parent
-
   for (auto &part : anatomy->body_parts) {
+    if (!part.is_functional) continue; // Skip if already broken
+
     if (part.parent_index != -1) {
-      // If parent is not functional, child is also not functional (e.g. severed
-      // arm -> hand useless) Note: This requires parent to be processed before
-      // child or multiple passes if indices are unordered. Assuming factory
-      // creates parents first (smaller index).
       if (!anatomy->body_parts[part.parent_index].is_functional) {
         part.is_functional = false;
       }

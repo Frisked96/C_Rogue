@@ -54,7 +54,7 @@ public:
   std::vector<std::string> attachment_points;
 
   // Semantic Tags (BioTags)
-  std::vector<std::string> tags;
+  BioTags::TagType tags;
 
   BodyPart()
       : name(""), type(BodyPartType::GENERIC), limb_type(LimbType::NONE),
@@ -64,7 +64,8 @@ public:
         armor_value(0), relative_x(0), relative_y(0), relative_z(0), width(0),
         height(0), depth(0), base_relative_x(0), base_relative_y(0),
         base_relative_z(0), base_width(0), base_height(0), base_depth(0),
-        parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f) {}
+        parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f),
+        tags(0) {}
 
   BodyPart(const std::string &name, int hp, bool vital = false, int armor = 0,
            float w = 0.5f, float h = 0.5f, float d = 0.5f)
@@ -75,7 +76,8 @@ public:
         armor_value(armor), relative_x(0), relative_y(0), relative_z(0),
         width(w), height(h), depth(d), base_relative_x(0), base_relative_y(0),
         base_relative_z(0), base_width(w), base_height(h), base_depth(d),
-        parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f) {}
+        parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f),
+        tags(0) {}
 
   float getTargetWeight() const { return width * height * depth; }
 
@@ -106,14 +108,10 @@ public:
     }
   }
 
-  void addTag(const std::string &tag) { tags.push_back(tag); }
+  void addTag(BioTags::TagType tag) { tags |= tag; }
 
-  bool hasTag(const std::string &tag) const {
-    for (const auto &t : tags) {
-      if (t == tag)
-        return true;
-    }
-    return false;
+  bool hasTag(BioTags::TagType tag) const {
+    return (tags & tag) == tag;
   }
 };
 

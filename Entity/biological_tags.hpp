@@ -1,31 +1,29 @@
 #pragma once
+#include <cstdint>
 
 namespace BioTags {
-// Vital Functions
-// If the aggregate efficiency of these drops to 0, the entity dies immediately.
-constexpr const char *CIRCULATION =
-    "Circulation"; // Required for Oxygen transport
-constexpr const char *RESPIRATION = "Respiration"; // Required for Oxygen intake
-constexpr const char *NEURAL = "Neural"; // Required for Action/Consciousness
+    using TagType = uint64_t;
 
-// Sustainment Functions
-// Loss leads to Sickness, Toxins, or Starvation over time.
-constexpr const char *DIGESTION = "Digestion"; // Converts Food -> Energy
-constexpr const char *FILTRATION =
-    "Filtration"; // Removes Toxins/Drug accumulation
-constexpr const char *ENDOCRINE =
-    "Endocrine"; // Regulates Stress/Adrenaline recovery
+    // Vital Functions
+    constexpr TagType CIRCULATION  = 1ULL << 0;
+    constexpr TagType RESPIRATION  = 1ULL << 1;
+    constexpr TagType NEURAL       = 1ULL << 2;
 
-// Capability Functions
-// Determines what the entity can DO.
-constexpr const char *MOTILITY = "Motility";         // Walking/Running speed
-constexpr const char *MANIPULATION = "Manipulation"; // Weapon handling/Leverage
-constexpr const char *SIGHT = "Sight";               // Vision range/Accuracy
+    // Sustainment Functions
+    constexpr TagType DIGESTION    = 1ULL << 3;
+    constexpr TagType FILTRATION   = 1ULL << 4;
+    constexpr TagType ENDOCRINE    = 1ULL << 5;
 
-// Exotic / Mutation Functions
-// Special tags for non-standard biology.
-constexpr const char *REGENERATION = "Regeneration"; // Passive HP recovery
-constexpr const char *THERMAL_GEN =
-    "ThermalGen"; // Body heat generation (resistance to cold)
-constexpr const char *TOXIN_GEN = "ToxinGen"; // Natural poison production
-} // namespace BioTags
+    // Capability Functions
+    constexpr TagType MOTILITY     = 1ULL << 6;
+    constexpr TagType MANIPULATION = 1ULL << 7;
+    constexpr TagType SIGHT        = 1ULL << 8;
+
+    // Exotic / Mutation Functions
+    constexpr TagType REGENERATION = 1ULL << 9;
+    constexpr TagType THERMAL_GEN  = 1ULL << 10;
+    constexpr TagType TOXIN_GEN    = 1ULL << 11;
+
+    // Helper to get tag from string if needed (legacy or data loading)
+    // For now we just use the constants.
+}
