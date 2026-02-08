@@ -2,6 +2,7 @@
 #include "anatomy_components.hpp"
 #include "components.hpp"
 #include "entity.hpp"
+#include "biological_tags.hpp"
 #include <cmath>
 #include <algorithm>
 #include <iostream> 
@@ -53,7 +54,9 @@ void PhysiologySystem::processCirculation(AnatomyComponent* anatomy, HealthCompo
     }
 
     // Heart efficiency affects circulation (and thus can indirectly affect oxygen)
-    float heartEff = calculateOrganEfficiency(anatomy, OrganType::HEART);
+    // Replaced OrganType::HEART with BioTags::CIRCULATION
+    float heartEff = calculateFunctionEfficiency(anatomy, BioTags::CIRCULATION);
+
     if (heartEff < 0.1f && anatomy->blood_volume > 0) {
          // Cardiac arrest - effectively no circulation
          // We represent this by not recovering oxygen and maybe dropping it fast
@@ -66,7 +69,8 @@ void PhysiologySystem::processCirculation(AnatomyComponent* anatomy, HealthCompo
 // Respiration & Oxygen
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processRespiration(AnatomyComponent* anatomy) {
-    float lungEff = calculateOrganEfficiency(anatomy, OrganType::LUNG);
+    // Replaced OrganType::LUNG with BioTags::RESPIRATION
+    float lungEff = calculateFunctionEfficiency(anatomy, BioTags::RESPIRATION);
     float bloodRatio = anatomy->blood_volume / anatomy->max_blood_volume;
     
     // Base oxygen consumption
@@ -87,9 +91,20 @@ void PhysiologySystem::processRespiration(AnatomyComponent* anatomy) {
     if (anatomy->oxygen_saturation < 30.0f) {
         // Hypoxia damage to vital organs would be cool, but for now simple global damage via health component
         // Or we could damage the Brain specifically?
-        // Let's damage the Brain if found
-        if (auto* brain = anatomy->getBodyPart("Brain")) {
-             brain->takeDamage(1);
+        // Finding Brain via NEURAL tag
+        bool foundBrain = false;
+        for (auto& part : anatomy->body_parts) {
+            if (part.hasTag(BioTags::NEURAL)) {
+                part.takeDamage(1);
+                foundBrain = true;
+                // Don't break, might have distributed neural system
+            }
+        }
+
+        // Fallback if no brain found but hypoxic
+        if (!foundBrain) {
+             // Generic system failure
+             anatomy->stress_level += 5.0f;
         }
     }
 }
@@ -210,12 +225,40 @@ void PhysiologySystem::processHealing(AnatomyComponent* anatomy) {
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
-float PhysiologySystem::calculateOrganEfficiency(AnatomyComponent* anatomy, OrganType type) {
-    // Find organ by type (much faster now)
+float PhysiologySystem::calculateFunctionEfficiency(AnatomyComponent* anatomy, const std::string& tag) {
+    float totalEfficiency = 0.0f;
+    int count = 0;
+
     for (const auto& part : anatomy->body_parts) {
-        if (part.type == BodyPartType::ORGAN && part.organ_type == type) {
-            return part.efficiency;
+        if (part.hasTag(tag)) {
+            totalEfficiency += part.efficiency;
+            count++;
         }
     }
-    return 1.0f; // Assume perfect if organ missing (or not modeled)
+
+    if (count == 0) return 1.0f; // Assume perfect if system not present (abstracted away)
+
+    // Average efficiency of all parts contributing to this function
+    return totalEfficiency / count;
+}
+
+bool PhysiologySystem::shouldKeepActive(AnatomyComponent* anatomy, HealthComponent* health) {
+    if (!health->is_alive) return false;
+
+    // Check Bleeding
+    for (const auto& part : anatomy->body_parts) {
+        if (part.bleeding_intensity > 0) return true;
+    }
+
+    // Check Pain & Stress
+    if (anatomy->accumulated_pain > 5.0f) return true;
+    if (anatomy->stress_level > 10.0f) return true;
+
+    // Check Health (Active Healing needed?)
+    bool lowHealth = health->current_health < health->max_health;
+    bool canHeal = anatomy->stored_energy > 500.0f && lowHealth;
+
+    if (canHeal) return true;
+
+    return false;
 }

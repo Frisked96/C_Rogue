@@ -1,6 +1,7 @@
 #include "entity_factory.hpp"
 #include "components.hpp"
 #include "anatomy_components.hpp"
+#include "biological_tags.hpp"
 #include <memory>
 #include <vector>
 
@@ -43,6 +44,7 @@ Entity* EntityFactory::createPlayer(int x, int y, const std::string& name, char 
     heart.organ_type = OrganType::HEART;
     heart.width = 0.15f;
     heart.height = 0.15f;
+    heart.addTag(BioTags::CIRCULATION);
     anatomy.addChildPart(torsoIdx, heart);
 
     BodyPart lungs("Lungs", 15, true);
@@ -50,6 +52,7 @@ Entity* EntityFactory::createPlayer(int x, int y, const std::string& name, char 
     lungs.organ_type = OrganType::LUNG;
     lungs.width = 0.2f;
     lungs.height = 0.2f;
+    lungs.addTag(BioTags::RESPIRATION);
     anatomy.addChildPart(torsoIdx, lungs);
 
     // 4. Brain inside Head
@@ -58,6 +61,7 @@ Entity* EntityFactory::createPlayer(int x, int y, const std::string& name, char 
     brain.organ_type = OrganType::BRAIN;
     brain.width = 0.1f;
     brain.height = 0.1f;
+    brain.addTag(BioTags::NEURAL);
     anatomy.addChildPart(headIdx, brain);
 
     // 5. Limbs

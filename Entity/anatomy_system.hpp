@@ -3,6 +3,7 @@
 
 class Entity;
 class AnatomyComponent;
+class BodyPart;
 
 class AnatomySystem {
 public:
@@ -13,4 +14,7 @@ public:
     float calculateReach(Entity* entity);
     float calculateMovementFactor(Entity* entity);
     bool inflictWound(Entity* target, const std::string& partName, int damage, int bleedSeverity = 0);
+
+    // Spatial / Hit Detection Logic
+    static BodyPart* determineHitLocation(AnatomyComponent* anatomy, float localX, float localY);
 };
