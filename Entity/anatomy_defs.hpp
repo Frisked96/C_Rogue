@@ -2,7 +2,7 @@
 
 enum class BodyPartType { GENERIC, LIMB, ORGAN };
 enum class LimbType { ARM, LEG, HEAD, TAIL, NONE };
-enum class OrganType { HEART, LUNG, BRAIN, STOMACH, LIVER, KIDNEY, NONE };
+enum class OrganType { HEART, LUNG, BRAIN, STOMACH, LIVER, KIDNEY, EYE, NONE };
 
 struct PhysiologyConfig {
     bool has_blood = true;
