@@ -1,8 +1,10 @@
 #include "engine.hpp"
+#include "Entity/components.hpp"
 #include <iostream>
 
 Engine::Engine(int width, int height)
-    : is_running(true), screen_width(width), screen_height(height) {
+    : entityFactory(entityManager), is_running(true), screen_width(width),
+      screen_height(height) {
 
   // Initialize map
   map = std::make_unique<Game_map>(width, height);
@@ -15,7 +17,7 @@ Engine::Engine(int width, int height)
   input_handler = std::make_unique<InputHandler>();
 
   // Initialize player at center
-  player = std::make_unique<Player>(width / 2, height / 2);
+  player = entityFactory.createPlayer(width / 2, height / 2, "Player", '@');
 }
 
 void Engine::run() {
@@ -38,15 +40,21 @@ void Engine::render() {
   }
 
   // 2. Draw player (over map)
-  renderer->set_tile(player->get_pos().x, player->get_pos().y,
-                     player->get_glyph());
+  if (player->hasComponent<PositionComponent>() &&
+      player->hasComponent<RenderComponent>()) {
+    auto pos = player->getComponent<PositionComponent>();
+    auto render = player->getComponent<RenderComponent>();
+    renderer->set_tile(pos->x, pos->y, render->glyph);
+  }
 
   // 3. Render to screen
   renderer->draw();
 
   // Print stats/help
-  std::cout << "Player: (" << player->get_pos().x << ", " << player->get_pos().y
-            << ")\n";
+  if (player->hasComponent<PositionComponent>()) {
+    auto pos = player->getComponent<PositionComponent>();
+    std::cout << "Player: (" << pos->x << ", " << pos->y << ")\n";
+  }
   std::cout << "Controls: WASD to move, Q to quit.\n";
 }
 
@@ -81,11 +89,15 @@ void Engine::handle_input() {
   }
 
   if (dx != 0 || dy != 0) {
-    int new_x = player->get_pos().x + dx;
-    int new_y = player->get_pos().y + dy;
+    if (player->hasComponent<PositionComponent>()) {
+      auto pos = player->getComponent<PositionComponent>();
+      int new_x = pos->x + dx;
+      int new_y = pos->y + dy;
 
-    if (map->can_walk(new_x, new_y)) {
-      player->move(dx, dy);
+      if (map->can_walk(new_x, new_y)) {
+        pos->x = new_x;
+        pos->y = new_y;
+      }
     }
   }
 }

@@ -1,7 +1,9 @@
 #include "anatomy_components.hpp"
+#include "biological_tags.hpp"
 
 std::unique_ptr<Component> AnatomyComponent::clone() const {
   auto copy = std::make_unique<AnatomyComponent>();
+  copy->physiology_config = physiology_config;
   copy->blood_volume = blood_volume;
   copy->max_blood_volume = max_blood_volume;
   copy->oxygen_saturation = oxygen_saturation;
@@ -51,6 +53,18 @@ int AnatomyComponent::getBodyPartIndex(const std::string &name) {
 bool AnatomyComponent::isFunctional() const {
   for (const auto &part : body_parts) {
     if (part.is_vital && !part.canFunction()) {
+      // If the part is vital for a function that is not needed, ignore it
+      if (part.hasTag(BioTags::RESPIRATION) &&
+          !physiology_config.needs_oxygen) {
+        continue;
+      }
+      if (part.hasTag(BioTags::CIRCULATION) && !physiology_config.has_blood) {
+        continue;
+      }
+      if (part.hasTag(BioTags::NEURAL) &&
+          !physiology_config.has_nervous_system) {
+        continue;
+      }
       return false;
     }
   }
@@ -62,4 +76,20 @@ void AnatomyComponent::takeDamageToBodyPart(const std::string &part_name,
   if (auto part = getBodyPart(part_name)) {
     part->takeDamage(damage);
   }
+}
+
+void AnatomyComponent::replaceBodyPart(int index, const BodyPart &newPart) {
+  if (index < 0 || index >= body_parts.size())
+    return;
+
+  // Capture existing hierarchy
+  int oldParent = body_parts[index].parent_index;
+  std::vector<int> oldChildren = body_parts[index].children_indices;
+
+  // Overwrite
+  body_parts[index] = newPart;
+
+  // Restore hierarchy
+  body_parts[index].parent_index = oldParent;
+  body_parts[index].children_indices = oldChildren;
 }

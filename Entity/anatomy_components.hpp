@@ -1,12 +1,9 @@
 #pragma once
 #include "component.hpp"
+#include "anatomy_defs.hpp"
 #include <memory>
 #include <string>
 #include <vector>
-
-enum class BodyPartType { GENERIC, LIMB, ORGAN };
-enum class LimbType { ARM, LEG, HEAD, TAIL, NONE };
-enum class OrganType { HEART, LUNG, BRAIN, STOMACH, LIVER, KIDNEY, NONE };
 
 // Flattened BodyPart class
 class BodyPart {
@@ -110,6 +107,9 @@ class AnatomyComponent : public BaseComponent<AnatomyComponent> {
 public:
   std::vector<BodyPart> body_parts;
 
+  // Physiology Configuration
+  PhysiologyConfig physiology_config;
+
   // Physiology State
   float blood_volume;
   float max_blood_volume;
@@ -142,4 +142,7 @@ public:
 
   // Take damage to a body part
   void takeDamageToBodyPart(const std::string &part_name, int damage);
+
+  // Replace a body part at runtime
+  void replaceBodyPart(int index, const BodyPart &newPart);
 };

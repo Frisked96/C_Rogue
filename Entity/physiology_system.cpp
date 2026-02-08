@@ -25,6 +25,9 @@ void PhysiologySystem::processEntity(Entity *entity, AnatomyComponent *anatomy,
 
 void PhysiologySystem::processCirculation(AnatomyComponent *anatomy,
                                           HealthComponent *health) {
+  if (!anatomy->physiology_config.has_blood)
+    return;
+
   float totalBleeding = 0.0f;
   for (auto &part : anatomy->body_parts) {
     totalBleeding += part.bleeding_intensity;
@@ -73,6 +76,9 @@ void PhysiologySystem::processCirculation(AnatomyComponent *anatomy,
 // Respiration & Oxygen
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processRespiration(AnatomyComponent *anatomy) {
+  if (!anatomy->physiology_config.needs_oxygen)
+    return;
+
   // Replaced OrganType::LUNG with BioTags::RESPIRATION
   float lungEff = calculateFunctionEfficiency(anatomy, BioTags::RESPIRATION);
   float bloodRatio = anatomy->blood_volume / anatomy->max_blood_volume;
@@ -120,8 +126,11 @@ void PhysiologySystem::processRespiration(AnatomyComponent *anatomy) {
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processMetabolism(AnatomyComponent *anatomy,
                                          HealthComponent *health) {
+  if (!anatomy->physiology_config.has_metabolism)
+    return;
+
   // Burn energy
-  float metabolicRate = 0.5f; // Calories per turn
+  float metabolicRate = anatomy->physiology_config.base_metabolic_rate;
   anatomy->stored_energy -= metabolicRate;
 
   if (anatomy->stored_energy < 0.0f) {
@@ -135,6 +144,9 @@ void PhysiologySystem::processMetabolism(AnatomyComponent *anatomy,
 // Pain
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processPain(AnatomyComponent *anatomy) {
+  if (!anatomy->physiology_config.feels_pain)
+    return;
+
   float totalPain = 0.0f;
   for (const auto &part : anatomy->body_parts) {
     if (part.max_hitpoints > 0) {
@@ -151,6 +163,9 @@ void PhysiologySystem::processPain(AnatomyComponent *anatomy) {
 // Stress & Adrenaline
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processStress(AnatomyComponent *anatomy) {
+  if (!anatomy->physiology_config.has_nervous_system)
+    return;
+
   // 1. Adrenaline Response
   // If pain is high, adrenaline spikes
   if (anatomy->accumulated_pain > 20.0f) {
@@ -203,6 +218,9 @@ void PhysiologySystem::processStress(AnatomyComponent *anatomy) {
 // Healing
 // -----------------------------------------------------------------------------
 void PhysiologySystem::processHealing(AnatomyComponent *anatomy) {
+  if (!anatomy->physiology_config.has_metabolism)
+    return;
+
   // Natural healing requires energy
   if (anatomy->stored_energy > 500.0f) {
     int healCost = 10;
