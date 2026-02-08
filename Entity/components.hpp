@@ -93,3 +93,33 @@ public:
   FactionComponent(Faction f = Faction::NEUTRAL, bool hostile = false)
       : faction(f), hostile_to_player(hostile) {}
 };
+
+class EnvironmentComponent : public BaseComponent<EnvironmentComponent> {
+public:
+  enum class Medium { AIR, WATER, VACUUM };
+
+  float temperature;       // Celsius
+  float oxygen_percentage; // 0.0 to 100.0 (Earth norm ~21.0)
+  float toxicity_level;    // 0.0 (clean) to 1.0 (deadly)
+  Medium medium;
+
+  EnvironmentComponent(float temp = 20.0f, float o2 = 21.0f,
+                       float toxin = 0.0f, Medium med = Medium::AIR)
+      : temperature(temp), oxygen_percentage(o2), toxicity_level(toxin),
+        medium(med) {}
+};
+
+class SpatialProfileComponent : public BaseComponent<SpatialProfileComponent> {
+public:
+  enum class Stance { STANDING, CROUCHING, PRONE, CRAWLING, FLYING };
+
+  float volume_occupancy;     // 0.0 to 1.0 (Percentage of tile volume filled)
+  float cross_section_coverage; // 0.0 to 1.0 (Percentage of tile face blocked, for hit calc)
+  float height_meters;        // Physical height of the entity
+  Stance current_stance;
+
+  SpatialProfileComponent(float vol = 0.5f, float coverage = 0.4f,
+                          float h = 1.7f, Stance stance = Stance::STANDING)
+      : volume_occupancy(vol), cross_section_coverage(coverage),
+        height_meters(h), current_stance(stance) {}
+};

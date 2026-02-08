@@ -1,5 +1,8 @@
 #include "anatomy_components.hpp"
 #include "biological_tags.hpp"
+#include "components.hpp"
+#include <algorithm>
+#include <limits>
 
 std::unique_ptr<Component> AnatomyComponent::clone() const {
   auto copy = std::make_unique<AnatomyComponent>();
@@ -15,6 +18,69 @@ std::unique_ptr<Component> AnatomyComponent::clone() const {
   copy->body_parts = body_parts;
   return copy;
 }
+
+void AnatomyComponent::updateSpatialProfile(SpatialProfileComponent &profile) {
+  float total_volume = 0.0f;
+  float total_area = 0.0f;
+  float min_y = std::numeric_limits<float>::max();
+  float max_y = std::numeric_limits<float>::lowest();
+
+  bool has_parts = false;
+
+  for (const auto &part : body_parts) {
+    // Skip organs for spatial profile (they are inside)
+    if (part.type == BodyPartType::ORGAN) {
+        continue;
+    }
+
+    has_parts = true;
+    
+    // Volume: Width * Height * Depth
+    total_volume += part.width * part.height * part.depth;
+
+    // Coverage (Projected Area): Width * Height
+    // Note: This assumes no overlap, which is an overestimation, but acceptable for now.
+    total_area += part.width * part.height;
+
+    // Height Calculation (Simple bounding box on Y axis)
+    // Assuming relative_y is effectively the center offset from entity root
+    float part_top = part.relative_y - (part.height / 2.0f);
+    float part_bottom = part.relative_y + (part.height / 2.0f);
+
+    if (part_top < min_y) min_y = part_top;
+    if (part_bottom > max_y) max_y = part_bottom;
+  }
+
+  if (has_parts) {
+    profile.volume_occupancy = total_volume; // In cubic meters (approx)
+    profile.cross_section_coverage = total_area; // In square meters
+    profile.height_meters = max_y - min_y;
+  } else {
+    // Fallback if no structural parts
+    profile.volume_occupancy = 0.0f;
+    profile.cross_section_coverage = 0.0f;
+    profile.height_meters = 0.0f;
+  }
+
+  // Adjust for Stance
+  switch (profile.current_stance) {
+    case SpatialProfileComponent::Stance::CROUCHING:
+      profile.height_meters *= 0.6f;
+      profile.cross_section_coverage *= 0.7f; // Harder to hit
+      break;
+    case SpatialProfileComponent::Stance::PRONE:
+    case SpatialProfileComponent::Stance::CRAWLING:
+      profile.height_meters *= 0.2f;
+      profile.cross_section_coverage *= 0.4f; // Very hard to hit from side
+      // Volume remains the same
+      break;
+    case SpatialProfileComponent::Stance::FLYING:
+    case SpatialProfileComponent::Stance::STANDING:
+    default:
+      break;
+  }
+}
+
 
 int AnatomyComponent::addBodyPart(const BodyPart &part) {
   body_parts.push_back(part);

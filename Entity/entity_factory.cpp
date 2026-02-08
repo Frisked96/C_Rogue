@@ -21,6 +21,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     BodyTemplatePart torso("Torso", "ROOT", 50, BodyPartType::GENERIC);
     torso.width = 0.6f;
     torso.height = 0.8f;
+    torso.depth = 0.3f;
     torso.is_vital = true;
     t.addPart(torso);
 
@@ -31,6 +32,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     head.limb_type = LimbType::HEAD;
     head.width = 0.3f;
     head.height = 0.3f;
+    head.depth = 0.25f;
     head.relative_y = -0.6f;
     head.is_vital = true;
     t.addPart(head);
@@ -40,6 +42,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     heart.organ_type = OrganType::HEART;
     heart.width = 0.15f;
     heart.height = 0.15f;
+    heart.depth = 0.15f;
     heart.is_vital = true;
     heart.tags.push_back(BioTags::CIRCULATION);
     t.addPart(heart);
@@ -48,6 +51,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     lungs.organ_type = OrganType::LUNG;
     lungs.width = 0.2f;
     lungs.height = 0.2f;
+    lungs.depth = 0.2f;
     lungs.is_vital = true;
     lungs.tags.push_back(BioTags::RESPIRATION);
     t.addPart(lungs);
@@ -57,6 +61,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     brain.organ_type = OrganType::BRAIN;
     brain.width = 0.1f;
     brain.height = 0.1f;
+    brain.depth = 0.1f;
     brain.is_vital = true;
     brain.tags.push_back(BioTags::NEURAL);
     t.addPart(brain);
@@ -67,6 +72,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     lArm.limb_type = LimbType::ARM;
     lArm.width = 0.2f;
     lArm.height = 0.7f;
+    lArm.depth = 0.15f;
     lArm.relative_x = -0.5f;
     t.addPart(lArm);
 
@@ -75,6 +81,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     rArm.limb_type = LimbType::ARM;
     rArm.width = 0.2f;
     rArm.height = 0.7f;
+    rArm.depth = 0.15f;
     rArm.relative_x = 0.5f;
     t.addPart(rArm);
 
@@ -83,6 +90,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     lLeg.limb_type = LimbType::LEG;
     lLeg.width = 0.2f;
     lLeg.height = 0.8f;
+    lLeg.depth = 0.15f;
     lLeg.relative_x = -0.2f;
     lLeg.relative_y = 0.6f;
     t.addPart(lLeg);
@@ -92,6 +100,7 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     rLeg.limb_type = LimbType::LEG;
     rLeg.width = 0.2f;
     rLeg.height = 0.8f;
+    rLeg.depth = 0.15f;
     rLeg.relative_x = 0.2f;
     rLeg.relative_y = 0.6f;
     t.addPart(rLeg);
@@ -108,6 +117,8 @@ Entity *EntityFactory::createFromTemplate(int x, int y, const BodyTemplate &body
   entity->addComponent<RenderComponent>(glyph);
   entity->addComponent<NameComponent>(name);
   entity->addComponent<BlockingComponent>();
+  entity->addComponent<EnvironmentComponent>();
+  entity->addComponent<SpatialProfileComponent>(0.1f, 0.4f, 1.75f);
 
   // Health? Calculated from body parts or standard?
   // Old code used 100. Let's stick with 100 for now, or sum of vital parts?
@@ -119,12 +130,16 @@ Entity *EntityFactory::createFromTemplate(int x, int y, const BodyTemplate &body
 
   // Pass 1: Create parts
   for (const auto &tp : bodyTemplate.parts) {
-      BodyPart part(tp.name, tp.max_hp, tp.is_vital, tp.armor, tp.width, tp.height);
+      BodyPart part(tp.name, tp.max_hp, tp.is_vital, tp.armor, tp.width, tp.height, tp.depth);
       part.type = tp.type;
       part.limb_type = tp.limb_type;
       part.organ_type = tp.organ_type;
       part.relative_x = tp.relative_x;
       part.relative_y = tp.relative_y;
+      part.relative_z = tp.relative_z;
+      part.base_relative_x = tp.relative_x;
+      part.base_relative_y = tp.relative_y;
+      part.base_relative_z = tp.relative_z;
       part.strength = tp.strength;
       part.dexterity = tp.dexterity;
       part.efficiency = tp.efficiency;

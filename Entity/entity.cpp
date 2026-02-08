@@ -72,3 +72,19 @@ bool Entity::hasInventory() const { return hasComponent<InventoryComponent>(); }
 InventoryComponent *Entity::getInventory() {
   return getComponent<InventoryComponent>();
 }
+
+bool Entity::hasEnvironment() const {
+  return hasComponent<EnvironmentComponent>();
+}
+
+EnvironmentComponent *Entity::getEnvironment() {
+  return getComponent<EnvironmentComponent>();
+}
+
+bool Entity::hasSpatialProfile() const {
+  return hasComponent<SpatialProfileComponent>();
+}
+
+SpatialProfileComponent *Entity::getSpatialProfile() {
+  return getComponent<SpatialProfileComponent>();
+}

@@ -28,8 +28,18 @@ public:
   // Spatial information relative to parent
   float relative_x;
   float relative_y;
+  float relative_z;
   float width;
   float height;
+  float depth;
+
+  // Base Spatial information (The "Resting" state)
+  float base_relative_x;
+  float base_relative_y;
+  float base_relative_z;
+  float base_width;
+  float base_height;
+  float base_depth;
 
   // Hierarchy (Indices into AnatomyComponent::body_parts)
   int parent_index; // -1 if root
@@ -51,19 +61,23 @@ public:
         organ_type(OrganType::NONE), max_hitpoints(0), current_hitpoints(0),
         is_vital(false), is_immune_to_poison(false), is_functional(true),
         bleeding_intensity(0), pain_level(0.0f), arterial_integrity(1.0f),
-        armor_value(0), relative_x(0), relative_y(0), width(0), height(0),
+        armor_value(0), relative_x(0), relative_y(0), relative_z(0), width(0),
+        height(0), depth(0), base_relative_x(0), base_relative_y(0),
+        base_relative_z(0), base_width(0), base_height(0), base_depth(0),
         parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f) {}
 
   BodyPart(const std::string &name, int hp, bool vital = false, int armor = 0,
-           float w = 0.5f, float h = 0.5f)
+           float w = 0.5f, float h = 0.5f, float d = 0.5f)
       : name(name), type(BodyPartType::GENERIC), limb_type(LimbType::NONE),
         organ_type(OrganType::NONE), max_hitpoints(hp), current_hitpoints(hp),
         is_vital(vital), is_immune_to_poison(false), is_functional(true),
         bleeding_intensity(0), pain_level(0.0f), arterial_integrity(1.0f),
-        armor_value(armor), relative_x(0), relative_y(0), width(w), height(h),
+        armor_value(armor), relative_x(0), relative_y(0), relative_z(0),
+        width(w), height(h), depth(d), base_relative_x(0), base_relative_y(0),
+        base_relative_z(0), base_width(w), base_height(h), base_depth(d),
         parent_index(-1), strength(0.0f), dexterity(0.0f), efficiency(1.0f) {}
 
-  float getTargetWeight() const { return width * height; }
+  float getTargetWeight() const { return width * height * depth; }
 
   bool canFunction() const { return is_functional && current_hitpoints > 0; }
 
@@ -145,4 +159,7 @@ public:
 
   // Replace a body part at runtime
   void replaceBodyPart(int index, const BodyPart &newPart);
+
+  // Recalculate spatial profile based on current body parts and pose
+  void updateSpatialProfile(class SpatialProfileComponent &profile);
 };

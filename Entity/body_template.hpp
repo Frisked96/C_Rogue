@@ -18,11 +18,13 @@ struct BodyTemplatePart {
     int armor = 0;
     float width = 0.5f;
     float height = 0.5f;
+    float depth = 0.5f;
 
     // Hierarchy
     std::string parent_name; // "ROOT" if no parent
     float relative_x = 0.0f;
     float relative_y = 0.0f;
+    float relative_z = 0.0f;
 
     // Specifics
     std::vector<std::string> tags; // BioTags

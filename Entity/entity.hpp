@@ -111,4 +111,8 @@ public:
   CombatComponent *getCombat();
   bool hasInventory() const;
   InventoryComponent *getInventory();
+  bool hasEnvironment() const;
+  EnvironmentComponent *getEnvironment();
+  bool hasSpatialProfile() const;
+  SpatialProfileComponent *getSpatialProfile();
 };
