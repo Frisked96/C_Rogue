@@ -98,7 +98,10 @@ Entity *EntityFactory::createFromTemplate(int x, int y, const BodyTemplate &body
       part.strength = tp.strength;
       part.dexterity = tp.dexterity;
       part.efficiency = tp.efficiency;
-      part.tags = tp.tags;
+      
+      for (const auto &tagStr : tp.tags) {
+          part.addTag(BioTags::fromString(tagStr));
+      }
 
       anatomy.addBodyPart(part);
   }

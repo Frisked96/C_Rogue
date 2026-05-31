@@ -20,8 +20,8 @@ protected:
 
 public:
   Item(const std::string &name, ItemType type, int weight = 1, int value = 10)
-      : name(name), type(type), weight(weight), value(value), description(""),
-        rarity(ItemRarity::COMMON) {}
+      : name(name), description(""), type(type), rarity(ItemRarity::COMMON),
+        weight(weight), value(value) {}
 
   virtual ~Item() = default;
 

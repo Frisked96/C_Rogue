@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 namespace BioTags {
     using TagType = uint64_t;
@@ -25,5 +26,19 @@ namespace BioTags {
     constexpr TagType TOXIN_GEN    = 1ULL << 11;
 
     // Helper to get tag from string if needed (legacy or data loading)
-    // For now we just use the constants.
+    inline TagType fromString(const std::string& tag) {
+        if (tag == "CIRCULATION") return CIRCULATION;
+        if (tag == "RESPIRATION") return RESPIRATION;
+        if (tag == "NEURAL") return NEURAL;
+        if (tag == "DIGESTION") return DIGESTION;
+        if (tag == "FILTRATION") return FILTRATION;
+        if (tag == "ENDOCRINE") return ENDOCRINE;
+        if (tag == "MOTILITY") return MOTILITY;
+        if (tag == "MANIPULATION") return MANIPULATION;
+        if (tag == "SIGHT") return SIGHT;
+        if (tag == "REGENERATION") return REGENERATION;
+        if (tag == "THERMAL_GEN") return THERMAL_GEN;
+        if (tag == "TOXIN_GEN") return TOXIN_GEN;
+        return 0;
+    }
 }

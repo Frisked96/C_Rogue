@@ -39,10 +39,10 @@ public:
   };
 
   std::vector<Slot> items;
-  int capacity;        // Max number of different items
+  size_t capacity;     // Max number of different items
   int weight_capacity; // Max weight
 
-  InventoryComponent(int cap = 20, int weight_cap = 100)
+  InventoryComponent(size_t cap = 20, int weight_cap = 100)
       : capacity(cap), weight_capacity(weight_cap) {}
 
   // Add an item to inventory

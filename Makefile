@@ -1,5 +1,5 @@
 # Default compiler
-CXX ?= clang++
+CXX = clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -I.
 
 SRCS = main.cpp \
@@ -19,7 +19,7 @@ SRCS = main.cpp \
        Entity/system_manager.cpp
 
 OBJS = $(SRCS:.cpp=.o)
-TARGET = main
+TARGET = main.exe
 
 all: $(TARGET)
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "component.hpp"
 #include "anatomy_defs.hpp"
+#include "biological_tags.hpp"
 #include <memory>
 #include <string>
 #include <vector>

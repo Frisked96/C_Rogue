@@ -37,7 +37,7 @@ struct BodyTemplatePart {
 
     // Convenience constructor
     BodyTemplatePart(const std::string& n, const std::string& p, int hp, BodyPartType t = BodyPartType::GENERIC)
-        : name(n), parent_name(p), max_hp(hp), type(t) {}
+        : name(n), type(t), max_hp(hp), parent_name(p) {}
 };
 
 // Complete blueprint for an entity's anatomy

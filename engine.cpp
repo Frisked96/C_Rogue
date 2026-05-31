@@ -1,3 +1,12 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+#endif
+
 #include "engine.hpp"
 #include "Entity/components.hpp"
 #include <iostream>
@@ -5,6 +14,18 @@
 Engine::Engine(int width, int height)
     : entityFactory(entityManager), is_running(true), screen_width(width),
       screen_height(height) {
+
+#ifdef _WIN32
+  // Enable ANSI escape codes on Windows
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hOut != INVALID_HANDLE_VALUE) {
+    DWORD dwMode = 0;
+    if (GetConsoleMode(hOut, &dwMode)) {
+      dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+      SetConsoleMode(hOut, dwMode);
+    }
+  }
+#endif
 
   // Initialize map
   map = std::make_unique<Game_map>(width, height);
@@ -28,8 +49,8 @@ void Engine::run() {
 }
 
 void Engine::render() {
-  // Clear screen (ANSI escape code)
-  std::cout << "\033[2J\033[1;1H";
+  // Move cursor to top-left and hide cursor
+  std::cout << "\033[H\033[?25l";
 
   // 1. Draw map
   for (int y = 0; y < map->get_height(); ++y) {

@@ -8,11 +8,13 @@ Terminal_renderer::Terminal_renderer(int w, int h)
     : height(h), width(w), view_grid(h, vector<char>(w, '.')) {}
 
 void Terminal_renderer::draw() {
+  std::string output = "";
   for (auto &row : view_grid) {
     for (char c : row)
-      cout << c;
-    cout << "\n";
+      output += c;
+    output += "\n";
   }
+  std::cout << output;
 }
 
 void Terminal_renderer::set_tile(int x, int y, char c) {
