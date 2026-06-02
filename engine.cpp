@@ -39,6 +39,14 @@ Engine::Engine(int width, int height)
 
   // Initialize player at center
   player = entityFactory.createPlayer(width / 2, height / 2, "Player", '@');
+
+  // Perform an initial full screen clear
+  std::cout << "\033[2J\033[1;1H";
+}
+
+Engine::~Engine() {
+  // Show cursor again and reset color/formatting
+  std::cout << "\033[?25h\033[0m\n";
 }
 
 void Engine::run() {
@@ -71,18 +79,21 @@ void Engine::render() {
   // 3. Render to screen
   renderer->draw();
 
-  // Print stats/help
+  // Print stats/help (pad with spaces to overwrite old text)
   if (player->hasComponent<PositionComponent>()) {
     auto pos = player->getComponent<PositionComponent>();
-    std::cout << "Player: (" << pos->x << ", " << pos->y << ")\n";
+    std::cout << "Player: (" << pos->x << ", " << pos->y << ")               \n";
   }
-  std::cout << "Controls: WASD to move, Q to quit.\n";
+  std::cout << "Controls: WASD to move, Q to quit.                         \n";
 }
 
 void Engine::handle_input() {
-  std::cout << "> ";
+  std::cout << ">       \b\b\b\b\b\b"; // Print prompt and space for input, move back
   char input;
   std::cin >> input;
+  
+  // Clear the rest of the line after input
+  std::cout << "\033[K";
 
   Action action = input_handler->process_input(input);
 

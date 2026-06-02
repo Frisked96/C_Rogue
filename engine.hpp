@@ -27,5 +27,6 @@ private:
 
 public:
   Engine(int width, int height);
+  ~Engine();
   void run();
 };
