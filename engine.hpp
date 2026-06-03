@@ -19,8 +19,6 @@ private:
   Entity *player; // Pointer managed by EntityManager
 
   bool is_running;
-  int screen_width;
-  int screen_height;
 
   void handle_input();
   void render();

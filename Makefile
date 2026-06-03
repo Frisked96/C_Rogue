@@ -1,5 +1,5 @@
 # Default compiler
-CXX = clang++
+CXX = "C:\Program Files\LLVM\bin\clang++.exe"
 CXXFLAGS = -std=c++17 -Wall -Wextra -I.
 
 SRCS = main.cpp \

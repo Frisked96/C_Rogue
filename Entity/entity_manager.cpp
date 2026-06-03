@@ -60,6 +60,14 @@ Entity *EntityManager::getEntity(int id) {
   return nullptr;
 }
 
+std::vector<Entity *> EntityManager::getAllEntities() {
+  std::vector<Entity *> results;
+  for (auto &pair : entities) {
+    results.push_back(pair.second.get());
+  }
+  return results;
+}
+
 std::vector<Entity *> EntityManager::getEntitiesMatching(Signature mask) {
   std::vector<Entity *> results;
   for (auto &pair : entities) {

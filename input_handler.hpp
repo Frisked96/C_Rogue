@@ -37,6 +37,9 @@ public:
   // Process a string (could be useful for commands later)
   Action process_string(const std::string &input) const;
 
+  // Get action from console input
+  Action get_action() const;
+
   // Change a key binding
   void bind_key(char key, Action action);
 

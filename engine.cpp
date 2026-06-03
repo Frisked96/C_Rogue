@@ -12,8 +12,7 @@
 #include <iostream>
 
 Engine::Engine(int width, int height)
-    : entityFactory(entityManager), is_running(true), screen_width(width),
-      screen_height(height) {
+    : entityFactory(entityManager), is_running(true) {
 
 #ifdef _WIN32
   // Enable ANSI escape codes on Windows
@@ -57,45 +56,18 @@ void Engine::run() {
 }
 
 void Engine::render() {
-  // Move cursor to top-left and hide cursor
-  std::cout << "\033[H\033[?25l";
+  renderer->clear_screen();
+  renderer->clear_buffer();
 
-  // 1. Draw map
-  for (int y = 0; y < map->get_height(); ++y) {
-    for (int x = 0; x < map->get_width(); ++x) {
-      Tile t = map->get_tile(x, y);
-      renderer->set_tile(x, y, t.glyph);
-    }
-  }
-
-  // 2. Draw player (over map)
-  if (player->hasComponent<PositionComponent>() &&
-      player->hasComponent<RenderComponent>()) {
-    auto pos = player->getComponent<PositionComponent>();
-    auto render = player->getComponent<RenderComponent>();
-    renderer->set_tile(pos->x, pos->y, render->glyph);
-  }
-
-  // 3. Render to screen
+  renderer->render_map(*map);
+  renderer->render_entities(entityManager);
+  
   renderer->draw();
-
-  // Print stats/help (pad with spaces to overwrite old text)
-  if (player->hasComponent<PositionComponent>()) {
-    auto pos = player->getComponent<PositionComponent>();
-    std::cout << "Player: (" << pos->x << ", " << pos->y << ")               \n";
-  }
-  std::cout << "Controls: WASD to move, Q to quit.                         \n";
+  renderer->draw_ui(player);
 }
 
 void Engine::handle_input() {
-  std::cout << ">       \b\b\b\b\b\b"; // Print prompt and space for input, move back
-  char input;
-  std::cin >> input;
-  
-  // Clear the rest of the line after input
-  std::cout << "\033[K";
-
-  Action action = input_handler->process_input(input);
+  Action action = input_handler->get_action();
 
   int dx = 0;
   int dy = 0;

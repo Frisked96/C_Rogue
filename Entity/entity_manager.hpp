@@ -50,6 +50,7 @@ public:
 
   void destroyEntity(int id);
   Entity *getEntity(int id);
+  std::vector<Entity *> getAllEntities();
 
   // Query
   // Returns all entities that possess at least the specified components.

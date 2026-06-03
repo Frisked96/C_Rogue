@@ -52,6 +52,17 @@ Action InputHandler::process_string(const std::string &input) const {
   return Action::NONE;
 }
 
+Action InputHandler::get_action() const {
+  std::cout << ">       \b\b\b\b\b\b"; // Print prompt and space for input, move back
+  char input;
+  std::cin >> input;
+
+  // Clear the rest of the line after input
+  std::cout << "\033[K";
+
+  return process_input(input);
+}
+
 void InputHandler::bind_key(char key, Action action) {
   key_bindings[std::tolower(static_cast<unsigned char>(key))] = action;
 }

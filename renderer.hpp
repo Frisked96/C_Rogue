@@ -2,6 +2,9 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
+#include "game_map.hpp"
+#include "Entity/entity_manager.hpp"
 
 using namespace std;
 
@@ -13,6 +16,11 @@ private:
 
 public:
   Terminal_renderer(int w, int h);
+  void clear_screen();
+  void clear_buffer();
   void draw();
   void set_tile(int x, int y, char c);
+  void render_map(const Game_map &map);
+  void render_entities(EntityManager &entityManager);
+  void draw_ui(const Entity *player);
 };
