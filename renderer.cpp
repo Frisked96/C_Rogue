@@ -26,7 +26,7 @@ void Terminal_renderer::draw() {
       output += c;
     output += "\n";
   }
-  std::cout << output;
+  std::cout << output << std::flush;
 }
 
 void Terminal_renderer::set_tile(int x, int y, char c) {
@@ -38,8 +38,8 @@ void Terminal_renderer::set_tile(int x, int y, char c) {
 void Terminal_renderer::render_map(const Game_map &map) {
   for (int y = 0; y < map.get_height(); ++y) {
     for (int x = 0; x < map.get_width(); ++x) {
-      Tile t = map.get_tile(x, y);
-      set_tile(x, y, t.glyph);
+      const auto &t = map.get_tile(x, y);
+      set_tile(x, y, t.get_glyph());
     }
   }
 }

@@ -84,11 +84,11 @@ void AnatomyComponent::updateSpatialProfile(SpatialProfileComponent &profile) {
 
 int AnatomyComponent::addBodyPart(const BodyPart &part) {
   body_parts.push_back(part);
-  return body_parts.size() - 1;
+  return static_cast<int>(body_parts.size()) - 1;
 }
 
 int AnatomyComponent::addChildPart(int parentIndex, const BodyPart &part) {
-  if (parentIndex < 0 || parentIndex >= body_parts.size())
+  if (parentIndex < 0 || parentIndex >= static_cast<int>(body_parts.size()))
     return -1;
 
   int childIndex = addBodyPart(part);
@@ -108,7 +108,7 @@ BodyPart *AnatomyComponent::getBodyPart(const std::string &name) {
 }
 
 int AnatomyComponent::getBodyPartIndex(const std::string &name) {
-  for (int i = 0; i < body_parts.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(body_parts.size()); ++i) {
     if (body_parts[i].name == name) {
       return i;
     }
@@ -145,7 +145,7 @@ void AnatomyComponent::takeDamageToBodyPart(const std::string &part_name,
 }
 
 void AnatomyComponent::replaceBodyPart(int index, const BodyPart &newPart) {
-  if (index < 0 || index >= body_parts.size())
+  if (index < 0 || index >= static_cast<int>(body_parts.size()))
     return;
 
   // Capture existing hierarchy

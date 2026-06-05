@@ -45,7 +45,7 @@ Engine::Engine(int width, int height)
 
 Engine::~Engine() {
   // Show cursor again and reset color/formatting
-  std::cout << "\033[?25h\033[0m\n";
+  std::cout << "\033[?25h\033[0m\n" << std::flush;
 }
 
 void Engine::run() {

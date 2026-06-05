@@ -10,7 +10,7 @@ Game_map::Game_map(int w, int h) : width(w), height(h) {
   }
 }
 
-Tile Game_map::get_tile(int x, int y) const {
+const Tile& Game_map::get_tile(int x, int y) const {
   if (x >= 0 && x < width && y >= 0 && y < height) {
     return map[y][x];
   }
@@ -24,8 +24,8 @@ void Game_map::set_tile(int x, int y, const Tile &tile) {
 }
 
 bool Game_map::can_walk(int x, int y) const {
-  Tile tile = get_tile(x, y);
-  return tile.is_walkable;
+  const auto& tile = get_tile(x, y);
+  return tile.get_is_walkable();
 }
 
 void Game_map::generate() {

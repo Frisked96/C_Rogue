@@ -15,7 +15,7 @@ private:
 public:
   Game_map(int w, int h);
 
-  Tile get_tile(int x, int y) const;
+  const Tile& get_tile(int x, int y) const;
   void set_tile(int x, int y, const Tile &tile);
 
   // check if position is walkable and within bounds
