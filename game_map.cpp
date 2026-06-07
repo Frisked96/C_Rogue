@@ -1,5 +1,6 @@
 #include "game_map.hpp"
 #include "map_gen/map_generator.hpp"
+#include "map_gen/simulator.hpp"
 
 Game_map::Game_map(int w, int h, int d) : width(w), height(h), depth(d) {
   map.assign(width * height * depth, Tiles::Wall);
@@ -30,6 +31,8 @@ bool Game_map::is_in_bounds(int x, int y, int z) const {
 
 void Game_map::generate(int seed) {
   MapGenerator::generate(*this, seed);
+  MapSimulator simulator;
+  simulator.run(*this, seed);
 }
 
 void Game_map::clear_visibility() {

@@ -90,9 +90,13 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x, int ca
       bool visible = map.is_visible(mx, my, z); // Use player level visibility for the column
 
       if (visible) {
-          // Highlight tiles on the same level as the player (except water)
-          if (cz == z && t->material != MaterialType::WATER_FRESH) {
-              bg_color = 236; // Dark gray background for current elevation
+          // Distinct highlights for floor vs walls at current level
+          if (t->material != MaterialType::WATER_FRESH) {
+              if (cz == z - 1) {
+                  bg_color = 236; // Floor Highlight (Subtle Dark Gray)
+              } else if (cz == z) {
+                  bg_color = 23;  // Wall/Ledge Highlight (Dark Cyan - indicates a climbable surface)
+              }
           }
 
           // Depth Dimming: If the ground is below the player, make it dimmer

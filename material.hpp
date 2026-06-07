@@ -6,13 +6,6 @@
 enum class MaterialType : uint8_t {
     AIR,
     WATER_FRESH,
-    WATER_SALT,
-    SOIL_SAND,
-    SOIL_LOAM,
-    SOIL_CLAY,
-    SOIL_SILT,
-    SOIL_PEAT,
-    STONE_GRANITE,
     SOIL_BASE,
     STONE_BASE,
     // ... expand as needed

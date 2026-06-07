@@ -9,5 +9,5 @@ public:
 private:
     static void simulate_cycle(Game_map& game_map, float water_to_add);
     static void apply_raindrops(Game_map& game_map, float total_water);
-    static void simulate_hydrology(Game_map& game_map);
+    static float simulate_hydrology(Game_map& game_map);
 };

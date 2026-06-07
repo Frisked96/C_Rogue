@@ -51,6 +51,9 @@ void compute_sector(Game_map& map, int start_x, int start_y, int start_z, int ra
 
             if (!map.is_in_bounds(x, y, start_z)) continue;
 
+            // Distance check for circular FOV
+            if (col * col + row.depth * row.depth > radius * radius) continue;
+
             bool opaque = map.is_opaque(x, y, start_z);
             
             // Mark the whole column visible if the top is visible (for renderer consistency)

@@ -135,8 +135,6 @@ void Engine::handle_input() {
       int nz = player->state.z + dz;
 
       // Surface-following logic
-      bool in_water = map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH;
-      
       if (entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map)) {
           // Attempt to climb (up to 2m)
           if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz + 1, *map)) {

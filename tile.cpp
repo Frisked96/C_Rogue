@@ -3,8 +3,8 @@
 #include <cmath>
 
 namespace Tiles {
-const Tile Wall{MaterialType::STONE_GRANITE};
-const Tile Floor{MaterialType::SOIL_LOAM};
+const Tile Wall{MaterialType::STONE_BASE};
+const Tile Floor{MaterialType::SOIL_BASE};
 } // namespace Tiles
 
 void Tile::updateTemperature(float ambient, float neighbours[6]) {

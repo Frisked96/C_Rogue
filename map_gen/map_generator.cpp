@@ -8,7 +8,7 @@ void MapGenerator::generate(Game_map& game_map, int seed) {
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     noise.SetFractalType(FastNoiseLite::FractalType_FBm);
     noise.SetFractalOctaves(3);
-    noise.SetFrequency(0.01f); // Lower frequency for smoother, larger hills
+    noise.SetFrequency(0.005f); // Broad landforms
 
     int width = game_map.get_width();
     int height = game_map.get_height();
@@ -18,12 +18,11 @@ void MapGenerator::generate(Game_map& game_map, int seed) {
         for (int x = 0; x < width; x++) {
             float noise_val = noise.GetNoise((float)x, (float)y);
             
-            // Map noise (-1 to 1) to height
-            int terrain_height = static_cast<int>((noise_val + 1.0f) * 0.5f * (depth * 0.6f)) + 5;
+            // Map noise to height
+            int terrain_height = static_cast<int>((noise_val + 1.0f) * 0.5f * (depth * 0.7f)) + 5;
             
             for (int z = 0; z < depth; z++) {
                 if (z < terrain_height) {
-                    // Place base materials
                     if (z > terrain_height - 3) {
                         game_map.set_tile(x, y, z, Tile(MaterialType::SOIL_BASE));
                     } else {
