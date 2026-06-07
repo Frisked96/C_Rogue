@@ -9,6 +9,7 @@ SRCS = main.cpp \
        input_handler.cpp \
        tile.cpp \
        material.cpp \
+       map_gen/map_generator.cpp \
        Entity/entity.cpp \
        Entity/entity_manager.cpp \
        Entity/entity_factory.cpp \

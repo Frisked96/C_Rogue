@@ -1,6 +1,7 @@
 #pragma once
 #include "combat_types.hpp"
 #include "component.hpp"
+#include <cmath>
 #include <string>
 
 // basic components for most entities
@@ -117,10 +118,15 @@ public:
   float volume_occupancy;     // 0.0 to 1.0 (Percentage of tile volume filled)
   float cross_section_coverage; // 0.0 to 1.0 (Percentage of tile face blocked, for hit calc)
   float height_meters;        // Physical height of the entity
+  int height_voxels;          // Number of voxels occupied vertically
   Stance current_stance;
 
   SpatialProfileComponent(float vol = 0.5f, float coverage = 0.4f,
                           float h = 1.7f, Stance stance = Stance::STANDING)
       : volume_occupancy(vol), cross_section_coverage(coverage),
-        height_meters(h), current_stance(stance) {}
+        height_meters(h), current_stance(stance) {
+    // Calculate voxel height (minimum 1)
+    height_voxels = static_cast<int>(std::ceil(h));
+    if (height_voxels < 1) height_voxels = 1;
+  }
 };

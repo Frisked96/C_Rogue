@@ -14,6 +14,9 @@
 Engine::Engine(int width, int height)
     : entityFactory(entityManager), is_running(true) {
 
+  // Connect systems
+  entityManager.setExternalListener(&systemManager);
+
 #ifdef _WIN32
   // Enable ANSI escape codes on Windows
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -52,6 +55,8 @@ void Engine::run() {
   while (is_running) {
     render();
     handle_input();
+    // Update systems (anatomy, etc.)
+    systemManager.update(entityManager);
   }
 }
 
@@ -111,10 +116,9 @@ void Engine::handle_input() {
       int new_y = pos->y + dy;
       int new_z = pos->z + dz;
 
-      if (map->can_walk(new_x, new_y, new_z)) {
-        pos->x = new_x;
-        pos->y = new_y;
-        pos->z = new_z;
+      // Use the new spatial grid for collision and support checks
+      if (systemManager.getSpatialGrid().canMoveTo(player, new_x, new_y, new_z, *map)) {
+        player->setPosition(new_x, new_y, new_z);
       }
     }
   }

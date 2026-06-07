@@ -72,7 +72,13 @@ void SystemManager::onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, 
 
 void SystemManager::onEntityDestroyed(Entity *entity) {
   if (auto *pos = entity->getComponent<PositionComponent>()) {
-    spatialGrid.removeEntity(entity, pos->x, pos->y, pos->z);
+    int height = 1;
+    if (entity->hasSpatialProfile()) {
+      height = entity->getSpatialProfile()->height_voxels;
+    }
+    for (int h = 0; h < height; ++h) {
+      spatialGrid.removeEntity(entity, pos->x, pos->y, pos->z + h);
+    }
   }
   markInactive(entity->getId());
 }

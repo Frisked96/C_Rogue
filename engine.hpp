@@ -2,6 +2,7 @@
 
 #include "Entity/entity_manager.hpp"
 #include "Entity/entity_factory.hpp"
+#include "Entity/system_manager.hpp"
 #include "game_map.hpp"
 #include "input_handler.hpp"
 #include "renderer.hpp"
@@ -16,6 +17,7 @@ private:
   // ECS Integration
   EntityManager entityManager;
   EntityFactory entityFactory;
+  SystemManager systemManager;
   Entity *player; // Pointer managed by EntityManager
 
   bool is_running;
