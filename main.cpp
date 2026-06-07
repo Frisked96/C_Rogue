@@ -2,7 +2,7 @@
 
 int main() {
   // Create an engine with a map size 
-  Engine engine(150, 20);
+  Engine engine(80, 24);
   engine.run();
   return 0;
 }

@@ -13,11 +13,8 @@ enum class MaterialType : uint8_t {
     SOIL_SILT,
     SOIL_PEAT,
     STONE_GRANITE,
-    STONE_LIMESTONE,
-    STONE_SANDSTONE,
-    STONE_BASALT,
-    ORE_IRON,
-    MAGMA,
+    SOIL_BASE,
+    STONE_BASE,
     // ... expand as needed
 };
 
@@ -40,6 +37,7 @@ struct MaterialProperties {
     bool  is_solid;              // blocks movement & sight
     bool  is_liquid;             // flows, drowns
     bool  is_opaque;             // blocks light
+    float erodibility;           // 0-1, how easily it erodes (0 = indestructible, 1 = dust)
 };
 
 struct TileState {
@@ -67,6 +65,9 @@ struct TileState {
 
     // --- contamination ---
     float contamination;    // generic 0–1 poison level
+    
+    // --- Erosion Simulation ---
+    float sediment;         // amount of eroded material currently held in this tile's water
 
     TileState(); // Initialize with defaults
 };

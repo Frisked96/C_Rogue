@@ -13,10 +13,11 @@ struct Tile {
   TileState state;
   uint32_t object_id; // 0 = no object
   bool is_explored;
+  bool is_visible;
 
   // Constructor
-  Tile() : material(MaterialType::AIR), object_id(0), is_explored(false) {}
-  Tile(MaterialType m) : material(m), object_id(0), is_explored(false) {}
+  Tile() : material(MaterialType::AIR), object_id(0), is_explored(false), is_visible(false) {}
+  Tile(MaterialType m) : material(m), object_id(0), is_explored(false), is_visible(false) {}
 
   // --- Cached lookups for speed ---
   const MaterialProperties &mat() const {

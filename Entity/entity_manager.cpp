@@ -1,102 +1,122 @@
 #include "entity_manager.hpp"
-#include <typeinfo>
+#include <algorithm>
 
-EntityManager::EntityManager() : externalListener(nullptr) {}
-
-EntityManager::~EntityManager() {
-  entities.clear();
-  pool.clear();
+EntityManager::EntityManager() {
+    slots.reserve(1024);
 }
 
-Entity *EntityManager::createEntity() {
-  // Check pool first
-  if (!pool.empty()) {
-    auto uptr = std::move(pool.back());
-    pool.pop_back();
-    Entity *ptr = uptr.get();
-    ptr->reset(); // Reset state
-    addEntity(std::move(uptr));
-    return ptr;
-  }
-
-  // Create new
-  auto uptr = std::make_unique<Entity>();
-  Entity *ptr = uptr.get();
-  addEntity(std::move(uptr));
-  return ptr;
-}
-
-void EntityManager::addEntity(std::unique_ptr<Entity> entity) {
-  if (entity) {
-    entity->setListener(this);
-    entities[entity->getId()] = std::move(entity);
-  }
-}
-
-void EntityManager::destroyEntity(int id) {
-  auto it = entities.find(id);
-  if (it != entities.end()) {
-    Entity *ptr = it->second.get();
-
-    // Notify listener for cleanup (SystemManager usually)
-    if (externalListener) {
-      externalListener->onEntityDestroyed(ptr);
+EntityID EntityManager::spawn(EntityType type, int x, int y, int z) {
+    uint32_t index;
+    uint32_t gen;
+    
+    if (free_slots.empty()) {
+        index = slots.size();
+        gen = 1;
+        slots.push_back({{}, gen, true});
+    } else {
+        index = free_slots.front();
+        free_slots.pop_front();
+        gen = ++slots[index].generation;
+        slots[index].active = true;
     }
 
-    // Reuse if it is a plain Entity
-    if (typeid(*ptr) == typeid(Entity)) {
-      pool.push_back(std::move(it->second));
+    Entity& e = slots[index].entity;
+    e.id = make_id(index, gen);
+    e.type = type;
+    e.active = true;
+
+    // Initialize state from properties
+    const auto& p = e.props();
+    e.state.x = x;
+    e.state.y = y;
+    e.state.z = z;
+    e.state.height = p.base_height;
+    e.state.weight = p.base_weight;
+    
+    e.state.hunger = 0.0f;
+    e.state.thirst = 0.0f;
+    e.state.energy_stored = p.max_calories_stored * 0.8f; // Start mostly full
+    e.state.stomach_contents = 0.0f;
+    e.state.excretion_buffer = 0.0f;
+    
+    // Convert daily needs to per-second rates
+    e.state.hunger_rate = p.daily_calorie_need / 86400.0f;
+    e.state.thirst_rate = 1.0f / (p.daily_water_need > 0 ? (86400.0f / p.daily_water_need) : 86400.0f);
+    e.state.digestion_rate = p.digestion_rate;
+    e.state.excretion_making_rate = p.excretion_making_rate;
+
+    if (type == EntityType::PLAYER) {
+        e.state.camera.active = true;
     }
 
-    entities.erase(it);
-  }
+    spatial_grid.add(e.id, x, y, z);
+    return e.id;
 }
 
-Entity *EntityManager::getEntity(int id) {
-  auto it = entities.find(id);
-  if (it != entities.end()) {
-    return it->second.get();
-  }
-  return nullptr;
-}
-
-std::vector<Entity *> EntityManager::getAllEntities() {
-  std::vector<Entity *> results;
-  for (auto &pair : entities) {
-    results.push_back(pair.second.get());
-  }
-  return results;
-}
-
-std::vector<Entity *> EntityManager::getEntitiesMatching(Signature mask) {
-  std::vector<Entity *> results;
-  for (auto &pair : entities) {
-    Entity *e = pair.second.get();
-    if ((e->getSignature() & mask) == mask) {
-      results.push_back(e);
+void EntityManager::kill(EntityID id) {
+    uint32_t index = get_index(id);
+    if (index < slots.size() && slots[index].generation == get_generation(id)) {
+        if (slots[index].active) {
+            spatial_grid.remove(id, slots[index].entity.state.x, slots[index].entity.state.y, slots[index].entity.state.z);
+            slots[index].active = false;
+            free_slots.push_back(index);
+        }
     }
-  }
-  return results;
 }
 
-// IEntityListener Implementation
-
-void EntityManager::onEntitySignatureChanged(Entity *entity,
-                                             Signature newSignature) {
-  if (externalListener) {
-    externalListener->onEntitySignatureChanged(entity, newSignature);
-  }
+Entity* EntityManager::get(EntityID id) {
+    uint32_t index = get_index(id);
+    if (index < slots.size() && slots[index].generation == get_generation(id) && slots[index].active) {
+        return &slots[index].entity;
+    }
+    return nullptr;
 }
 
-void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
-                                  int newY, int newZ) {
-  if (externalListener) {
-    externalListener->onEntityMoved(entity, oldX, oldY, oldZ, newX, newY, newZ);
-  }
+const Entity* EntityManager::get(EntityID id) const {
+    uint32_t index = get_index(id);
+    if (index < slots.size() && slots[index].generation == get_generation(id) && slots[index].active) {
+        return &slots[index].entity;
+    }
+    return nullptr;
 }
 
-void EntityManager::onEntityDestroyed(Entity *entity) {
-  if (externalListener) {
-    externalListener->onEntityDestroyed(entity);
-  }
+void EntityManager::update(float dt) {
+    for (auto& slot : slots) {
+        if (!slot.active) continue;
+        Entity& e = slot.entity;
+        const auto& p = e.props();
+
+        // 1. Metabolism
+        float metabolic_drain = e.state.hunger_rate * dt;
+        e.state.energy_stored -= metabolic_drain;
+
+        // 2. Digestion
+        if (e.state.stomach_contents > 0) {
+            float digested = std::min(e.state.stomach_contents, e.state.digestion_rate * dt);
+            e.state.stomach_contents -= digested;
+            e.state.energy_stored += digested * 500.0f; // 1 unit food = 500 cal
+            e.state.excretion_buffer += digested * e.state.excretion_making_rate;
+        }
+
+        // 3. Thirst
+        e.state.thirst += e.state.thirst_rate * dt;
+
+        // 4. Update Status Levels
+        e.state.hunger = 1.0f - (e.state.energy_stored / p.max_calories_stored);
+        
+        // Clamping
+        e.state.energy_stored = std::clamp(e.state.energy_stored, 0.0f, p.max_calories_stored);
+        e.state.thirst = std::clamp(e.state.thirst, 0.0f, 1.0f);
+        e.state.hunger = std::clamp(e.state.hunger, 0.0f, 1.0f);
+        e.state.excretion_buffer = std::clamp(e.state.excretion_buffer, 0.0f, p.max_excretion_buffer);
+        e.state.stomach_contents = std::clamp(e.state.stomach_contents, 0.0f, p.max_stomach);
+    }
+}
+
+std::vector<Entity*> EntityManager::get_all_active() {
+    std::vector<Entity*> active;
+    for (auto& slot : slots) {
+        if (slot.active) active.push_back(&slot.entity);
+    }
+    return active;
 }

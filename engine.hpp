@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Entity/entity_manager.hpp"
-#include "Entity/entity_factory.hpp"
-#include "Entity/system_manager.hpp"
 #include "game_map.hpp"
 #include "input_handler.hpp"
 #include "renderer.hpp"
@@ -14,13 +12,12 @@ private:
   std::unique_ptr<Terminal_renderer> renderer;
   std::unique_ptr<InputHandler> input_handler;
 
-  // ECS Integration
+  // Simplified Entity System
   EntityManager entityManager;
-  EntityFactory entityFactory;
-  SystemManager systemManager;
-  Entity *player; // Pointer managed by EntityManager
+  EntityID player_id;
 
   bool is_running;
+  std::string last_msg;
 
   void handle_input();
   void render();

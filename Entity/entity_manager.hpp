@@ -1,73 +1,42 @@
 #pragma once
-
-#include "spatial_system.hpp"
-#include <algorithm>
-#include <functional>
-#include <memory>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
+#include <deque>
+#include <unordered_map>
+#include "entity.hpp"
+#include "spatial_grid.hpp"
 
-// Helper to build signatures from component types
-template <typename... Components> struct SignatureBuilder {
-  static Signature build() {
-    Signature s;
-    (void)std::initializer_list<int>{
-        (s.set(BaseComponent<Components>::getComponentTypeId()), 0)...};
-    return s;
-  }
-};
-
-class EntityManager : public IEntityListener {
+class EntityManager {
 private:
-  // Main storage
-  std::unordered_map<int, std::unique_ptr<Entity>> entities;
+    struct Slot {
+        Entity entity;
+        uint32_t generation;
+        bool active;
+    };
 
-  // Entity pool
-  std::vector<std::unique_ptr<Entity>> pool;
+    std::vector<Slot> slots;
+    std::deque<uint32_t> free_slots;
+    SpatialGrid spatial_grid;
 
-  // External listener (e.g. SystemManager)
-  IEntityListener *externalListener = nullptr;
+    EntityID make_id(uint32_t index, uint32_t generation) const {
+        return (generation << 16) | (index & 0xFFFF);
+    }
+    uint32_t get_index(EntityID id) const { return id & 0xFFFF; }
+    uint32_t get_generation(EntityID id) const { return id >> 16; }
 
 public:
-  EntityManager();
-  ~EntityManager();
+    EntityManager();
 
-  void setExternalListener(IEntityListener *listener) {
-    externalListener = listener;
-  }
+    EntityID spawn(EntityType type, int x, int y, int z);
+    void kill(EntityID id);
 
-  // Factory methods
-  Entity *createEntity();
+    Entity* get(EntityID id);
+    const Entity* get(EntityID id) const;
 
-  template <typename T, typename... Args> T *createEntity(Args &&...args) {
-    // T must inherit Entity
-    auto uptr = std::make_unique<T>(std::forward<Args>(args)...);
-    T *ptr = uptr.get();
-    addEntity(std::move(uptr));
-    return ptr;
-  }
-
-  void destroyEntity(int id);
-  Entity *getEntity(int id);
-  std::vector<Entity *> getAllEntities();
-
-  // Query
-  // Returns all entities that possess at least the specified components.
-  template <typename... Components> std::vector<Entity *> getEntitiesWith() {
-    Signature mask = SignatureBuilder<Components...>::build();
-    return getEntitiesMatching(mask);
-  }
-
-  std::vector<Entity *> getEntitiesMatching(Signature mask);
-
-  // IEntityListener implementation
-  void onEntitySignatureChanged(Entity *entity,
-                                Signature newSignature) override;
-  void onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
-                     int newY, int newZ) override;
-  void onEntityDestroyed(Entity *entity) override;
-
-private:
-  void addEntity(std::unique_ptr<Entity> entity);
+    void update(float dt);
+    
+    // For renderer/iteration
+    std::vector<Entity*> get_all_active();
+    
+    SpatialGrid& get_spatial_grid() { return spatial_grid; }
+    const SpatialGrid& get_spatial_grid() const { return spatial_grid; }
 };

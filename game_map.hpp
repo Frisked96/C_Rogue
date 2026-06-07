@@ -32,5 +32,12 @@ public:
 
   bool is_in_bounds(int x, int y, int z) const;
 
-  void generate();
+  void generate(int seed = 1337);
+
+  // Visibility
+  void clear_visibility();
+  bool is_opaque(int x, int y, int z) const;
+  void set_visible(int x, int y, int z, bool visible);
+  bool is_visible(int x, int y, int z) const;
+  bool is_explored(int x, int y, int z) const;
 };

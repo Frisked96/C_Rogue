@@ -8,14 +8,14 @@
 #endif
 
 #include "engine.hpp"
-#include "Entity/components.hpp"
+#include "map_gen/visibility.hpp"
 #include <iostream>
+#include <ctime>
+#include <cstdlib>
+#include <algorithm>
 
 Engine::Engine(int width, int height)
-    : entityFactory(entityManager), is_running(true) {
-
-  // Connect systems
-  entityManager.setExternalListener(&systemManager);
+    : is_running(true) {
 
 #ifdef _WIN32
   // Enable ANSI escape codes on Windows
@@ -29,9 +29,11 @@ Engine::Engine(int width, int height)
   }
 #endif
 
-  // Initialize map
-  map = std::make_unique<Game_map>(width, height, 10); // 10 levels deep
-  map->generate();
+  // Initialize map with a random seed
+  std::srand(static_cast<unsigned int>(std::time(nullptr)));
+  int seed = std::rand();
+  map = std::make_unique<Game_map>(100, 100, 100); // 100x100x100 map
+  map->generate(seed);
 
   // Initialize renderer
   renderer = std::make_unique<Terminal_renderer>(width, height);
@@ -39,8 +41,18 @@ Engine::Engine(int width, int height)
   // Initialize input handler
   input_handler = std::make_unique<InputHandler>();
 
-  // Initialize player at center, level 0
-  player = entityFactory.createPlayer(width / 2, height / 2, 0, "Player", '@');
+  // Find a valid spawn point for the player (start from top and go down until we hit ground)
+  int spawn_x = 50;
+  int spawn_y = 50;
+  int spawn_z = 99;
+  while (spawn_z > 0 && map->get_tile(spawn_x, spawn_y, spawn_z).material == MaterialType::AIR) {
+      spawn_z--;
+  }
+  // Spawn 1 tile above ground (in the air)
+  if (spawn_z < 99) spawn_z++;
+
+  player_id = entityManager.spawn(EntityType::PLAYER, spawn_x, spawn_y, spawn_z);
+  last_msg = "Welcome to C_Rogue! Explore the mountains.";
 
   // Perform an initial full screen clear
   std::cout << "\033[2J\033[1;1H";
@@ -55,8 +67,8 @@ void Engine::run() {
   while (is_running) {
     render();
     handle_input();
-    // Update systems (anatomy, etc.)
-    systemManager.update(entityManager);
+    // Update physiological systems
+    entityManager.update(0.1f); // 100ms ticks
   }
 }
 
@@ -64,16 +76,22 @@ void Engine::render() {
   renderer->clear_screen();
   renderer->clear_buffer();
 
+  int player_x = 0;
+  int player_y = 0;
   int player_z = 0;
-  if (player->hasComponent<PositionComponent>()) {
-    player_z = player->getComponent<PositionComponent>()->z;
+  Entity* player = entityManager.get(player_id);
+  if (player) {
+    player_x = player->state.x;
+    player_y = player->state.y;
+    player_z = player->state.z;
+    Visibility::compute_fov(*map, player->state.x, player->state.y, player->state.z, player->props().vision_radius);
   }
 
-  renderer->render_map(*map, player_z);
-  renderer->render_entities(entityManager, player_z);
+  renderer->render_map(*map, player_z, player_x, player_y);
+  renderer->render_entities(entityManager, *map, player_z, player_x, player_y);
   
   renderer->draw();
-  renderer->draw_ui(player);
+  renderer->draw_ui(player, *map, last_msg);
 }
 
 void Engine::handle_input() {
@@ -110,15 +128,56 @@ void Engine::handle_input() {
   }
 
   if (dx != 0 || dy != 0 || dz != 0) {
-    if (player->hasComponent<PositionComponent>()) {
-      auto pos = player->getComponent<PositionComponent>();
-      int new_x = pos->x + dx;
-      int new_y = pos->y + dy;
-      int new_z = pos->z + dz;
+    Entity* player = entityManager.get(player_id);
+    if (player) {
+      int nx = player->state.x + dx;
+      int ny = player->state.y + dy;
+      int nz = player->state.z + dz;
 
-      // Use the new spatial grid for collision and support checks
-      if (systemManager.getSpatialGrid().canMoveTo(player, new_x, new_y, new_z, *map)) {
-        player->setPosition(new_x, new_y, new_z);
+      // Surface-following logic
+      bool in_water = map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH;
+      
+      if (entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map)) {
+          // Attempt to climb (up to 2m)
+          if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz + 1, *map)) {
+              nz++;
+              last_msg = "You climb up.";
+          } else if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz + 2, *map)) {
+              nz += 2;
+              last_msg = "You scramble up the ridge.";
+          } else {
+              last_msg = "Blocked by " + map->get_tile(nx, ny, nz).mat().name + ".";
+              return;
+          }
+      } else {
+          // Gravity / Descending logic
+          int start_z = nz;
+          while (nz > 0 && 
+                 !entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map) &&
+                 !entityManager.get_spatial_grid().is_blocked(nx, ny, nz - 1, *map)) {
+              
+              // Buoyancy: Stop falling if we hit water
+              if (map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH) {
+                  last_msg = "You are swimming.";
+                  break;
+              }
+              nz--;
+          }
+          
+          if (nz < start_z) {
+              last_msg = (start_z - nz > 1) ? "You scramble down." : "You descend.";
+          } else if (map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH) {
+              last_msg = "You wade through the water.";
+          } else {
+              last_msg = "You move forward.";
+          }
+      }
+
+      if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map)) {
+        entityManager.get_spatial_grid().move(player_id, player->state.x, player->state.y, player->state.z, nx, ny, nz);
+        player->state.x = nx;
+        player->state.y = ny;
+        player->state.z = nz;
       }
     }
   }

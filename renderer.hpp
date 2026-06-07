@@ -9,18 +9,25 @@
 using namespace std;
 
 class Terminal_renderer {
+public:
+  struct Cell {
+    char glyph;
+    int fg;
+    int bg;
+  };
+
 private:
   int height;
   int width;
-  vector<vector<char>> view_grid;
+  vector<vector<Cell>> view_grid;
 
 public:
   Terminal_renderer(int w, int h);
   void clear_screen();
   void clear_buffer();
   void draw();
-  void set_tile(int x, int y, char c);
-  void render_map(const Game_map &map, int z);
-  void render_entities(EntityManager &entityManager, int z);
-  void draw_ui(const Entity *player);
+  void set_tile(int x, int y, char c, int fg = 7);
+  void render_map(const Game_map &map, int z, int cam_x, int cam_y);
+  void render_entities(EntityManager &entityManager, const Game_map &map, int z, int cam_x, int cam_y);
+  void draw_ui(const Entity *player, const Game_map &map, const std::string& msg);
 };

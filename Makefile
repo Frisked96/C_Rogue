@@ -10,15 +10,11 @@ SRCS = main.cpp \
        tile.cpp \
        material.cpp \
        map_gen/map_generator.cpp \
-       Entity/entity.cpp \
+       map_gen/simulator.cpp \
+       map_gen/visibility.cpp \
+       Entity/entity_properties.cpp \
        Entity/entity_manager.cpp \
-       Entity/entity_factory.cpp \
-       Entity/anatomy_components.cpp \
-       Entity/anatomy_system.cpp \
-       Entity/physiology_system.cpp \
-       Entity/damage_resolution_system.cpp \
-       Entity/spatial_system.cpp \
-       Entity/system_manager.cpp
+       Entity/spatial_grid.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
