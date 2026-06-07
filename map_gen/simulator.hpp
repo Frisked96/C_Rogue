@@ -1,3 +1,4 @@
+// simulator.hpp
 #pragma once
 
 #include "../game_map.hpp"
@@ -7,7 +8,7 @@ public:
     static void run(Game_map& game_map, int seed);
 
 private:
-    static void simulate_cycle(Game_map& game_map, float water_to_add);
     static void apply_raindrops(Game_map& game_map, float total_water);
     static float simulate_hydrology(Game_map& game_map);
+    static void balance_basins(Game_map& game_map);
 };
