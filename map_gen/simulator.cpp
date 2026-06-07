@@ -11,8 +11,8 @@ void MapSimulator::run(Game_map& game_map, int seed) {
     int height = game_map.get_height();
     int depth = game_map.get_depth();
 
-    // CALIBRATED BUDGET: 0.015m per cell (150 units total per year)
-    float base_annual_water = (float)(width * height) * 0.015f;
+    // CALIBRATED BUDGET: 0.018m per cell
+    float base_annual_water = (float)(width * height) * 0.018f;
     float atmosphere_water = 0.0f; 
 
     for (int year = 0; year < num_years; ++year) {
@@ -20,12 +20,11 @@ void MapSimulator::run(Game_map& game_map, int seed) {
         atmosphere_water -= (atmosphere_water * 0.8f);
         apply_raindrops(game_map, rainfall);
 
-        // Run 8 sub-steps per year to let water reach the bottom!
-        for (int step = 0; step < 8; ++step) {
+        // Run 12 sub-steps per year for absolute consolidation
+        for (int step = 0; step < 12; ++step) {
             float evaporated = simulate_hydrology(game_map);
             atmosphere_water += evaporated;
         }
-
         atmosphere_water = std::min(atmosphere_water, base_annual_water * 5.0f);
     }
 }
@@ -70,8 +69,7 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
                 }
                 bool exposed = (z == depth - 1) || (game_map.get_tile(x, y, z + 1).material == MaterialType::AIR);
                 if (exposed && t.state.moisture > 0.001f) {
-                    // Slower evaporation during sub-steps (1/8th of intended annual)
-                    float rate = (t.material == MaterialType::WATER_FRESH) ? 0.02f : 0.01f; 
+                    float rate = (t.material == MaterialType::WATER_FRESH) ? 0.01f : 0.005f; // Slower sub-step evap
                     float evap = t.state.moisture * rate;
                     t.state.moisture -= evap;
                     total_evaporated += evap;
@@ -100,9 +98,7 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
                 float excess = (t.material == MaterialType::WATER_FRESH) ? t.state.moisture : std::max(0.0f, t.state.moisture - t.effective_porosity());
                 if (excess <= 0.01f) continue;
 
-                int dx[] = {1, -1, 0, 0, 1, 1, -1, -1};
-                int dy[] = {0, 0, 1, -1, 1, -1, 1, -1};
-
+                int dx[] = {1, -1, 0, 0, 1, 1, -1, -1}, dy[] = {0, 0, 1, -1, 1, -1, 1, -1};
                 std::vector<std::pair<int, int>> lower;
                 std::vector<std::pair<int, int>> level;
                 float current_pot = (float)z + t.state.moisture;
@@ -110,17 +106,14 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
                 for (int i = 0; i < 8; ++i) {
                     int nx = x + dx[i], ny = y + dy[i];
                     if (!game_map.is_in_bounds(nx, ny, z)) continue;
-                    int nz = z;
-                    while (nz > 0 && game_map.get_tile(nx, ny, nz).material == MaterialType::AIR) nz--;
+                    int nz = z; while (nz > 0 && game_map.get_tile(nx, ny, nz).material == MaterialType::AIR) nz--;
                     const Tile& n = game_map.get_tile(nx, ny, nz);
                     float pot = (float)nz + n.state.moisture;
-
                     if (pot < current_pot - 0.005f) lower.push_back({nx, ny});
                     else if (std::abs(pot - current_pot) < 0.01f) level.push_back({nx, ny});
                 }
 
                 if (!lower.empty()) {
-                    // GRAVITATE TO LOWER: 95% transfer for consolidation
                     float min_p = 999.0f; int bx = x, by = y;
                     for (auto& ln : lower) {
                         int nz = z; while (nz > 0 && game_map.get_tile(ln.first, ln.second, nz).material == MaterialType::AIR) nz--;
@@ -131,15 +124,13 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
                     Tile& target = const_cast<Tile&>(game_map.get_tile(bx, by, tz));
                     float flow = excess * 0.95f; 
                     t.state.moisture -= flow; target.state.moisture += flow;
-
-                    // REDUCED EROSION
+                    // EROSION
                     if (flow > 0.02f && t.mat().erodibility > 0.0f) {
-                        float erosion = std::min(t.state.structural_integrity, flow * (current_pot - min_p) * t.mat().erodibility * 0.1f);
+                        float erosion = std::min(t.state.structural_integrity, flow * (current_pot - min_p) * t.mat().erodibility * 0.05f); // LIGHT
                         t.state.structural_integrity -= erosion;
-                        if (t.state.structural_integrity < 0.2f && t.material != MaterialType::STONE_BASE) game_map.set_tile(x, y, z, Tile(MaterialType::AIR));
+                        if (t.state.structural_integrity < 0.15f && t.material != MaterialType::STONE_BASE) game_map.set_tile(x, y, z, Tile(MaterialType::AIR));
                     }
                 } else if (!level.empty()) {
-                    // EXPAND HORIZONTALLY: Leveling lakes
                     for (auto& ln : level) {
                         int tz = z; while (tz > 0 && game_map.get_tile(ln.first, ln.second, tz).material == MaterialType::AIR) tz--;
                         Tile& target = const_cast<Tile&>(game_map.get_tile(ln.first, ln.second, tz));
@@ -160,7 +151,7 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
                 Tile& t = const_cast<Tile&>(game_map.get_tile(x, y, z));
                 if (t.material == MaterialType::AIR || t.material == MaterialType::WATER_FRESH) continue;
                 float excess = t.state.moisture - t.effective_porosity();
-                if (excess > 0.7f) { // High threshold for significant bodies
+                if (excess > 0.15f) { // LOWER THRESHOLD FOR BASINS
                     Tile& above = const_cast<Tile&>(game_map.get_tile(x, y, z + 1));
                     if (above.material == MaterialType::AIR) {
                         float pool_vol = excess; 
