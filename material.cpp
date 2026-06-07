@@ -21,7 +21,18 @@ const MaterialProperties &get_material_properties(MaterialType type) {
       {MaterialType::SOIL_LOAM,
        {"Loam", '.', 3, 0, 1400.0f, 0.15f, 0.4f, 0.45f, 0.00001f, 1.0f, 800.0f,
         50.0f, 0.8f, 6.5f, false, false, true}},
-      // Add more as needed...
+      {MaterialType::SOIL_SAND,
+       {"Sand", '.', 14, 0, 1600.0f, 0.1f, 0.1f, 0.35f, 0.001f, 0.27f, 830.0f,
+        10.0f, 0.1f, 7.5f, false, false, true}},
+      {MaterialType::SOIL_CLAY,
+       {"Clay", '.', 6, 0, 1700.0f, 0.2f, 0.6f, 0.4f, 0.0000001f, 1.1f, 900.0f,
+        100.0f, 0.5f, 6.0f, false, false, true}},
+      {MaterialType::STONE_LIMESTONE,
+       {"Limestone", '#', 7, 0, 2500.0f, 0.6f, 1.0f, 0.1f, 0.00001f, 1.3f, 900.0f,
+        100000.0f, 0.0f, 8.5f, true, false, true}},
+      {MaterialType::ORE_IRON,
+       {"Iron Ore", '&', 1, 0, 5000.0f, 0.8f, 1.0f, 0.05f, 0.0f, 15.0f, 450.0f,
+        300000.0f, 0.0f, 7.0f, true, false, true}},
   };
 
   auto it = catalogue.find(type);
@@ -31,8 +42,6 @@ const MaterialProperties &get_material_properties(MaterialType type) {
   return catalogue.at(MaterialType::AIR);
 }
 
-// Global pointer for fast lookup (initialized in a way that's safe but simple for now)
-// In a real system we might use a fixed array indexed by MaterialType.
 const MaterialProperties* get_material_db() {
     static MaterialProperties db[256];
     static bool initialized = false;
@@ -46,4 +55,3 @@ const MaterialProperties* get_material_db() {
 }
 
 const MaterialProperties* material_db = get_material_db();
-

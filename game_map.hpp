@@ -10,19 +10,27 @@ class Game_map {
 private:
   int width;
   int height;
-  std::vector<std::vector<Tile>> map;
+  int depth;
+  std::vector<Tile> map;
+
+  int get_index(int x, int y, int z) const {
+    return (z * width * height) + (y * width) + x;
+  }
 
 public:
-  Game_map(int w, int h);
+  Game_map(int w, int h, int d);
 
-  const Tile& get_tile(int x, int y) const;
-  void set_tile(int x, int y, const Tile &tile);
+  const Tile& get_tile(int x, int y, int z) const;
+  void set_tile(int x, int y, int z, const Tile &tile);
 
   // check if position is walkable and within bounds
-  bool can_walk(int x, int y) const;
+  bool can_walk(int x, int y, int z) const;
 
   int get_height() const { return height; }
   int get_width() const { return width; }
+  int get_depth() const { return depth; }
+
+  bool is_in_bounds(int x, int y, int z) const;
 
   void generate();
 };

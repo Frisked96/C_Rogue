@@ -8,8 +8,9 @@ class PositionComponent : public BaseComponent<PositionComponent> {
 public:
   int x;
   int y;
+  int z;
 
-  PositionComponent(int x = 0, int y = 0) : x(x), y(y) {}
+  PositionComponent(int x = 0, int y = 0, int z = 0) : x(x), y(y), z(z) {}
 };
 
 class RenderComponent : public BaseComponent<RenderComponent> {

@@ -1,6 +1,6 @@
 # Default compiler
 CXX = "C:\Program Files\LLVM\bin\clang++.exe"
-CXXFLAGS = -std=c++17 -Wall -Wextra -I.
+CXXFLAGS = -std=c++17 -Wall -Wextra -I. -MMD -MP
 
 SRCS = main.cpp \
        engine.cpp \
@@ -20,6 +20,7 @@ SRCS = main.cpp \
        Entity/system_manager.cpp
 
 OBJS = $(SRCS:.cpp=.o)
+DEPS = $(SRCS:.cpp=.d)
 TARGET = main.exe
 
 all: $(TARGET)
@@ -30,7 +31,9 @@ $(TARGET): $(OBJS)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+-include $(DEPS)
+
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(DEPS) $(TARGET)
 
 .PHONY: all clean

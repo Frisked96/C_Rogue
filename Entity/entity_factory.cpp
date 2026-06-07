@@ -12,9 +12,9 @@
 
 EntityFactory::EntityFactory(EntityManager &em) : entityManager(em) {}
 
-Entity *EntityFactory::createPlayer(int x, int y, const std::string &name,
+Entity *EntityFactory::createPlayer(int x, int y, int z, const std::string &name,
                                     char glyph) {
-    return createFromTemplate(x, y, createHumanTemplate(), name, glyph);
+    return createFromTemplate(x, y, z, createHumanTemplate(), name, glyph);
 }
 
 BodyTemplate EntityFactory::createHumanTemplate() {
@@ -63,12 +63,12 @@ BodyTemplate EntityFactory::createHumanTemplate() {
     return t;
 }
 
-Entity *EntityFactory::createFromTemplate(int x, int y, const BodyTemplate &bodyTemplate,
+Entity *EntityFactory::createFromTemplate(int x, int y, int z, const BodyTemplate &bodyTemplate,
                                           const std::string &name, char glyph) {
   Entity *entity = entityManager.createEntity();
 
   // Add standard components
-  entity->addComponent<PositionComponent>(x, y);
+  entity->addComponent<PositionComponent>(x, y, z);
   entity->addComponent<RenderComponent>(glyph);
   entity->addComponent<NameComponent>(name);
   entity->addComponent<BlockingComponent>();

@@ -27,7 +27,7 @@ Engine::Engine(int width, int height)
 #endif
 
   // Initialize map
-  map = std::make_unique<Game_map>(width, height);
+  map = std::make_unique<Game_map>(width, height, 10); // 10 levels deep
   map->generate();
 
   // Initialize renderer
@@ -36,8 +36,8 @@ Engine::Engine(int width, int height)
   // Initialize input handler
   input_handler = std::make_unique<InputHandler>();
 
-  // Initialize player at center
-  player = entityFactory.createPlayer(width / 2, height / 2, "Player", '@');
+  // Initialize player at center, level 0
+  player = entityFactory.createPlayer(width / 2, height / 2, 0, "Player", '@');
 
   // Perform an initial full screen clear
   std::cout << "\033[2J\033[1;1H";
@@ -59,8 +59,13 @@ void Engine::render() {
   renderer->clear_screen();
   renderer->clear_buffer();
 
-  renderer->render_map(*map);
-  renderer->render_entities(entityManager);
+  int player_z = 0;
+  if (player->hasComponent<PositionComponent>()) {
+    player_z = player->getComponent<PositionComponent>()->z;
+  }
+
+  renderer->render_map(*map, player_z);
+  renderer->render_entities(entityManager, player_z);
   
   renderer->draw();
   renderer->draw_ui(player);
@@ -71,6 +76,7 @@ void Engine::handle_input() {
 
   int dx = 0;
   int dy = 0;
+  int dz = 0;
 
   switch (action) {
   case Action::MOVE_UP:
@@ -85,6 +91,12 @@ void Engine::handle_input() {
   case Action::MOVE_RIGHT:
     dx = 1;
     break;
+  case Action::MOVE_LEVEL_UP:
+    dz = 1;
+    break;
+  case Action::MOVE_LEVEL_DOWN:
+    dz = -1;
+    break;
   case Action::QUIT:
     is_running = false;
     break;
@@ -92,15 +104,17 @@ void Engine::handle_input() {
     break;
   }
 
-  if (dx != 0 || dy != 0) {
+  if (dx != 0 || dy != 0 || dz != 0) {
     if (player->hasComponent<PositionComponent>()) {
       auto pos = player->getComponent<PositionComponent>();
       int new_x = pos->x + dx;
       int new_y = pos->y + dy;
+      int new_z = pos->z + dz;
 
-      if (map->can_walk(new_x, new_y)) {
+      if (map->can_walk(new_x, new_y, new_z)) {
         pos->x = new_x;
         pos->y = new_y;
+        pos->z = new_z;
       }
     }
   }

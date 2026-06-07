@@ -5,32 +5,36 @@ int Entity::next_id = 0;
 
 Entity::Entity() : id(next_id++) {}
 
-void Entity::setPosition(int x, int y) {
-  int oldX = 0, oldY = 0;
+void Entity::setPosition(int x, int y, int z) {
+  int oldX = 0, oldY = 0, oldZ = 0;
   bool hadPos = false;
   if (auto *pos = getComponent<PositionComponent>()) {
     oldX = pos->x;
     oldY = pos->y;
+    oldZ = pos->z;
     hadPos = true;
     pos->x = x;
     pos->y = y;
+    pos->z = z;
   } else {
-    addComponent<PositionComponent>(x, y);
+    addComponent<PositionComponent>(x, y, z);
   }
 
   if (listener) {
-    listener->onEntityMoved(this, hadPos ? oldX : x, hadPos ? oldY : y, x, y);
+    listener->onEntityMoved(this, hadPos ? oldX : x, hadPos ? oldY : y, hadPos ? oldZ : z, x, y, z);
   }
 }
 
-void Entity::move(int dx, int dy) {
+void Entity::move(int dx, int dy, int dz) {
   if (auto *pos = getComponent<PositionComponent>()) {
     int oldX = pos->x;
     int oldY = pos->y;
+    int oldZ = pos->z;
     pos->x += dx;
     pos->y += dy;
+    pos->z += dz;
     if (listener) {
-      listener->onEntityMoved(this, oldX, oldY, pos->x, pos->y);
+      listener->onEntityMoved(this, oldX, oldY, oldZ, pos->x, pos->y, pos->z);
     }
   }
 }

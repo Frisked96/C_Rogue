@@ -10,6 +10,8 @@ enum class Action {
   MOVE_DOWN,
   MOVE_LEFT,
   MOVE_RIGHT,
+  MOVE_LEVEL_UP,
+  MOVE_LEVEL_DOWN,
   QUIT,
   WAIT,
   INVENTORY,

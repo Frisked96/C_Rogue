@@ -88,10 +88,10 @@ void EntityManager::onEntitySignatureChanged(Entity *entity,
   }
 }
 
-void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
-                                  int newY) {
+void EntityManager::onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
+                                  int newY, int newZ) {
   if (externalListener) {
-    externalListener->onEntityMoved(entity, oldX, oldY, newX, newY);
+    externalListener->onEntityMoved(entity, oldX, oldY, oldZ, newX, newY, newZ);
   }
 }
 

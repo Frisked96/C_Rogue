@@ -29,6 +29,8 @@ void InputHandler::init_key_bindings() {
   key_bindings['+'] = Action::ZOOM_IN;  // Zoom in
   key_bindings['-'] = Action::ZOOM_OUT; // Zoom out
   key_bindings['='] = Action::ZOOM_IN;  // Alternative zoom in
+  key_bindings['<'] = Action::MOVE_LEVEL_UP;
+  key_bindings['>'] = Action::MOVE_LEVEL_DOWN;
 }
 
 Action InputHandler::process_input(char input) const {
@@ -69,7 +71,7 @@ void InputHandler::bind_key(char key, Action action) {
 
 std::string InputHandler::get_controls_help() const {
   std::string help = "=== CONTROLS ===\n";
-  help += "  Movement:    WASD or Numpad 8246\n";
+  help += "  Movement:    WASD or Numpad 8246, < (Up), > (Down)\n";
   help += "  Wait:        Space, ., or 5\n";
   help += "  Inventory:   i\n";
   help += "  Look:        l\n";
@@ -91,6 +93,10 @@ std::string InputHandler::action_to_string(Action action) {
     return "MOVE_LEFT";
   case Action::MOVE_RIGHT:
     return "MOVE_RIGHT";
+  case Action::MOVE_LEVEL_UP:
+    return "MOVE_LEVEL_UP";
+  case Action::MOVE_LEVEL_DOWN:
+    return "MOVE_LEVEL_DOWN";
   case Action::QUIT:
     return "QUIT";
   case Action::WAIT:

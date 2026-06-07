@@ -18,8 +18,8 @@ class IEntityListener {
 public:
   virtual void onEntitySignatureChanged(Entity *entity,
                                         Signature newSignature) = 0;
-  virtual void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
-                             int newY) = 0;
+  virtual void onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
+                             int newY, int newZ) = 0;
   virtual void onEntityDestroyed(Entity *entity) = 0;
   virtual ~IEntityListener() = default;
 };
@@ -98,8 +98,8 @@ public:
   }
 
   // helper methods
-  void setPosition(int x, int y);
-  void move(int dx, int dy);
+  void setPosition(int x, int y, int z);
+  void move(int dx, int dy, int dz);
   char getGlyph() const;
   std::string getName() const;
   bool blocksMovement() const;

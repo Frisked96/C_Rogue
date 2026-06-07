@@ -50,8 +50,8 @@ public:
   // IEntityListener Implementation (moved from EntityManager)
   void onEntitySignatureChanged(Entity *entity,
                                 Signature newSignature) override;
-  void onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
-                     int newY) override;
+  void onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
+                     int newY, int newZ) override;
   void onEntityDestroyed(Entity *entity) override;
 
   // Hybrid Update Management

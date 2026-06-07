@@ -20,7 +20,7 @@ public:
   void clear_buffer();
   void draw();
   void set_tile(int x, int y, char c);
-  void render_map(const Game_map &map);
-  void render_entities(EntityManager &entityManager);
+  void render_map(const Game_map &map, int z);
+  void render_entities(EntityManager &entityManager, int z);
   void draw_ui(const Entity *player);
 };

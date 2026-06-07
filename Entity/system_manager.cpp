@@ -1,94 +1,78 @@
 #include "system_manager.hpp"
+#include "anatomy_components.hpp"
+#include "anatomy_system.hpp"
 #include "components.hpp"
-#include <vector>
+#include "physiology_system.hpp"
+#include <iostream>
 
 SystemManager::SystemManager() {}
 
 void SystemManager::update(EntityManager &em) {
-  // Hybrid Update: Only process entities that are "active"
-  // Active entities are those that have suffered damage, stress, or are
-  // players. We iterate over the active set.
-
-  std::vector<int> toRemove;
-
-  for (int entityId : active_anatomy_entities) {
-    Entity *entity = em.getEntity(entityId);
-    if (!entity) {
-      toRemove.push_back(
-          entityId); // Should have been caught by onEntityDestroyed
-      continue;
-    }
-
-    // 1. Anatomy logic (vitals check, limb status)
-    anatomy.processEntity(entity);
-
-    // 2. Physiology logic (bleeding, metabolism, oxygen)
-    // Requires HealthComponent to be alive
-    bool stillActive = false;
-    if (entity->hasComponent<HealthComponent>()) {
-      auto *health = entity->getComponent<HealthComponent>();
-      if (health->is_alive) {
-        physiology.processEntity(entity, entity->getAnatomy(), health);
-
-        // Check if we can deactivate this entity (stabilized)
-        auto *anat = entity->getAnatomy();
-        if (anat) {
-          stillActive = physiology.shouldKeepActive(anat, health);
-        }
-      }
-    }
-
-    if (!stillActive) {
-      toRemove.push_back(entityId);
+  auto entities = em.getAllEntities();
+  for (auto *entity : entities) {
+    if (entity->hasComponent<AnatomyComponent>() && entity->hasComponent<HealthComponent>()) {
+      auto *anatomyComp = entity->getComponent<AnatomyComponent>();
+      auto *healthComp = entity->getComponent<HealthComponent>();
+      physiology.processEntity(entity, anatomyComp, healthComp);
     }
   }
 
-  for (int id : toRemove) {
-    active_anatomy_entities.erase(id);
+  // 2. Anatomy Update (Regeneration, etc - only for active entities)
+  for (int id : active_anatomy_entities) {
+    if (auto *entity = em.getEntity(id)) {
+      anatomy.processEntity(entity);
+    }
   }
 }
 
 AttackResult SystemManager::resolveAttack(Entity *attacker, Entity *defender,
                                           const DamageInfo &info) {
-  AttackResult res = damageResolution.resolveAttack(attacker, defender, info);
-
-  if (res.hit) {
-    markActive(defender->getId());
-    if (attacker)
-      markActive(attacker->getId()); // Attacker might get tired/stressed
-  }
-
-  return res;
+  return damageResolution.resolveAttack(attacker, defender, info);
 }
 
 bool SystemManager::inflictWound(Entity *target, const std::string &partName,
                                  int damage, int bleedSeverity) {
-  bool result = anatomy.inflictWound(target, partName, damage, bleedSeverity);
-  if (result) {
-    markActive(target->getId());
+  if (!target->hasAnatomy())
+    return false;
+  auto *anatomyComp = target->getAnatomy();
+  int idx = anatomyComp->getBodyPartIndex(partName);
+  if (idx == -1)
+    return false;
+
+  anatomyComp->body_parts[idx].current_hitpoints -= damage;
+  if (bleedSeverity > 0) {
+    anatomyComp->body_parts[idx].bleeding_intensity += bleedSeverity;
   }
-  return result;
+  return true;
 }
 
 void SystemManager::onEntitySignatureChanged(Entity *entity,
-                                             Signature newSignature) {
+                                              Signature newSignature) {
+  static size_t anatomyBit =
+      BaseComponent<AnatomyComponent>::getComponentTypeId();
   static size_t posBit = BaseComponent<PositionComponent>::getComponentTypeId();
+
+  if (newSignature.test(anatomyBit)) {
+    markActive(entity->getId());
+  } else {
+    markInactive(entity->getId());
+  }
 
   if (newSignature.test(posBit)) {
     if (auto *pos = entity->getComponent<PositionComponent>()) {
-      spatialGrid.updateEntity(entity, pos->x, pos->y, pos->x, pos->y);
+      spatialGrid.updateEntity(entity, pos->x, pos->y, pos->z, pos->x, pos->y, pos->z);
     }
   }
 }
 
-void SystemManager::onEntityMoved(Entity *entity, int oldX, int oldY, int newX,
-                                  int newY) {
-  spatialGrid.updateEntity(entity, oldX, oldY, newX, newY);
+void SystemManager::onEntityMoved(Entity *entity, int oldX, int oldY, int oldZ, int newX,
+                                  int newY, int newZ) {
+  spatialGrid.updateEntity(entity, oldX, oldY, oldZ, newX, newY, newZ);
 }
 
 void SystemManager::onEntityDestroyed(Entity *entity) {
   if (auto *pos = entity->getComponent<PositionComponent>()) {
-    spatialGrid.removeEntity(entity, pos->x, pos->y);
+    spatialGrid.removeEntity(entity, pos->x, pos->y, pos->z);
   }
   markInactive(entity->getId());
 }
