@@ -31,8 +31,6 @@ bool Game_map::is_in_bounds(int x, int y, int z) const {
 
 void Game_map::generate(int seed) {
   MapGenerator::generate(*this, seed);
-  MapSimulator simulator;
-  simulator.run(*this, seed);
 }
 
 void Game_map::clear_visibility() {
