@@ -154,9 +154,9 @@ void Engine::handle_input() {
                  !entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map) &&
                  !entityManager.get_spatial_grid().is_blocked(nx, ny, nz - 1, *map)) {
               
-              // Buoyancy: Stop falling if we hit water
-              if (map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH) {
-                  last_msg = "You are swimming.";
+              // Buoyancy: Stop falling if we hit deep enough water
+              const Tile& current_tile = map->get_tile(nx, ny, nz);
+              if (current_tile.material == MaterialType::WATER_FRESH && current_tile.state.moisture >= 0.4f) {
                   break;
               }
               nz--;
@@ -165,7 +165,10 @@ void Engine::handle_input() {
           if (nz < start_z) {
               last_msg = (start_z - nz > 1) ? "You scramble down." : "You descend.";
           } else if (map->get_tile(nx, ny, nz).material == MaterialType::WATER_FRESH) {
-              last_msg = "You wade through the water.";
+              float m = map->get_tile(nx, ny, nz).state.moisture;
+              if (m >= 0.8f) last_msg = "You are swimming.";
+              else if (m >= 0.4f) last_msg = "You wade through waist-deep water.";
+              else last_msg = "You splash through ankle-deep water.";
           } else {
               last_msg = "You move forward.";
           }

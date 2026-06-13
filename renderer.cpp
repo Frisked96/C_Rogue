@@ -87,15 +87,33 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x, int ca
       
       int color = t->mat().fg_color;
       int bg_color = 0;
+      char glyph = t->get_glyph();
+
+      // Fractional Water Rendering
+      if (t->material == MaterialType::WATER_FRESH && cz > 0) {
+          if (t->state.moisture < 0.4f) {
+              // Shallow water: Render ground below
+              const Tile& below = map.get_tile(mx, my, cz - 1);
+              if (below.material != MaterialType::AIR) {
+                  glyph = below.get_glyph();
+                  color = below.mat().fg_color;
+                  // Only tint blue if there's enough water to see (e.g. 15cm)
+                  if (t->state.moisture > 0.15f) {
+                      bg_color = 17; // Navy Blue background
+                  }
+              }
+          }
+      }
+
       bool visible = map.is_visible(mx, my, z); // Use player level visibility for the column
 
       if (visible) {
           // Distinct highlights for floor vs walls at current level
-          if (t->material != MaterialType::WATER_FRESH) {
+          if (bg_color == 0) {
               if (cz == z - 1) {
                   bg_color = 236; // Floor Highlight (Subtle Dark Gray)
               } else if (cz == z) {
-                  bg_color = 23;  // Wall/Ledge Highlight (Dark Cyan - indicates a climbable surface)
+                  bg_color = 23;  // Wall/Ledge Highlight (Dark Cyan)
               }
           }
 
@@ -112,9 +130,10 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x, int ca
       } else {
           // Explored but not currently visible: Dim Gray
           color = 237; 
+          bg_color = 0;
       }
       
-      view_grid[vy][vx] = {t->get_glyph(), color, bg_color};
+      view_grid[vy][vx] = {glyph, color, bg_color};
     }
   }
 }

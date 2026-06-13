@@ -1,6 +1,6 @@
 # Default compiler
 CXX = "C:\Program Files\LLVM\bin\clang++.exe"
-CXXFLAGS = -std=c++17 -Wall -Wextra -I. -MMD -MP
+CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -I. -MMD -MP
 
 SRCS = main.cpp \
        engine.cpp \
@@ -31,6 +31,12 @@ $(TARGET): $(OBJS)
 -include $(DEPS)
 
 clean:
-	rm -f $(OBJS) $(DEPS) $(TARGET)
+	if exist *.o del /q *.o
+	if exist map_gen\*.o del /q map_gen\*.o
+	if exist Entity\*.o del /q Entity\*.o
+	if exist *.d del /q *.d
+	if exist map_gen\*.d del /q map_gen\*.d
+	if exist Entity\*.d del /q Entity\*.d
+	if exist $(TARGET) del /q $(TARGET)
 
 .PHONY: all clean
