@@ -1,3 +1,4 @@
+// Optimized Hydrology
 #include "simulator.hpp"
 #include <random>
 #include <algorithm>
@@ -9,10 +10,9 @@ void MapSimulator::run(Game_map& game_map, int seed) {
     int num_years = 65;
     int width = game_map.get_width();
     int height = game_map.get_height();
-    int depth = game_map.get_depth();
 
-    // CALIBRATED BUDGET: 0.025m per cell
-    float base_annual_water = (float)(width * height) * 0.025f;
+    // CALIBRATED BUDGET: 0.03m per cell
+    float base_annual_water = (float)(width * height) * 0.03f;
     float atmosphere_water = 0.0f; 
 
     for (int year = 0; year < num_years; ++year) {
@@ -26,7 +26,7 @@ void MapSimulator::run(Game_map& game_map, int seed) {
         }
 
         // 2. Basin Leveling (Once per year - perfectly flat lakes)
-        balance_basins(game_map);
+        atmosphere_water += balance_basins(game_map);
         
         atmosphere_water = std::min(atmosphere_water, base_annual_water * 5.0f);
     }
@@ -94,9 +94,10 @@ float MapSimulator::simulate_hydrology(Game_map& game_map) {
     return evap;
 }
 
-void MapSimulator::balance_basins(Game_map& game_map) {
+float MapSimulator::balance_basins(Game_map& game_map) {
     int width = game_map.get_width(), height = game_map.get_height(), depth = game_map.get_depth();
     std::vector<bool> visited(width * height, false);
+    float lost_to_air = 0.0f;
 
     for (int z = 0; z < depth; ++z) {
         std::fill(visited.begin(), visited.end(), false);
@@ -127,13 +128,17 @@ void MapSimulator::balance_basins(Game_map& game_map) {
                         bool is_saturated = (nt.state.moisture > nt.effective_porosity() + 0.01f);
                         bool footprint = (z > 0 && game_map.get_tile(nx, ny, z - 1).material != MaterialType::AIR);
                         
-                        if (is_water || is_saturated || (footprint && total_m / basin.size() > 0.1f)) {
+                        if (is_water || is_saturated || (footprint && total_m / (float)basin.size() > 0.1f)) {
                             visited[ny * width + nx] = true; q.push({nx, ny});
                         }
                     }
                 }
 
+                float loss = total_m * 0.005f; // 0.5% consolidation loss
+                total_m -= loss;
+                lost_to_air += loss;
                 float avg = total_m / (float)basin.size();
+
                 for (auto& p : basin) {
                     Tile& bt = const_cast<Tile&>(game_map.get_tile(p.first, p.second, z));
                     if (bt.material != MaterialType::WATER_FRESH && avg > 0.05f) {
@@ -149,4 +154,5 @@ void MapSimulator::balance_basins(Game_map& game_map) {
             }
         }
     }
+    return lost_to_air;
 }
