@@ -19,8 +19,7 @@ struct MaterialProperties {
 
   float density_kgm3; // mass per m³ (air ~1.2, water 1000, granite 2700)
   float hardness;     // 0–1, affects mining speed & tool wear
-  float
-      compaction_resistance; // 0–1, 0 = compacts instantly, 1 = never compacts
+  float compaction_resistance; // 0–1, 0 = compacts instantly, 1 = never compacts
   float max_porosity; // volume fraction available for water/air (0 for solid
                       // rock)
   float permeability; // how fast water flows through saturated material, m/s
@@ -69,8 +68,7 @@ struct TileState {
   float contamination; // generic 0–1 poison level
 
   // --- Erosion Simulation ---
-  float
-      sediment; // amount of eroded material currently held in this tile's water
+  float sediment; // amount of eroded material currently held in this tile's water
 
   TileState(); // Initialize with defaults
 };
