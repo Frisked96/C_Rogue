@@ -1,6 +1,7 @@
 # Default compiler
 CXX = "C:\Program Files\LLVM\bin\clang++.exe"
 CXXFLAGS = -std=c++20  -O3 -Wall -Wextra -I. -MMD -MP
+FORMATTER = "C:\Program Files\LLVM\bin\clang-format.exe"
 
 SRCS = main.cpp \
        engine.cpp \
@@ -39,4 +40,7 @@ clean:
 	if exist Entity\*.d del /q Entity\*.d
 	if exist $(TARGET) del /q $(TARGET)
 
-.PHONY: all clean
+format:
+	$(FORMATTER) -i $(SRCS) *.hpp Entity/*.hpp map_gen/*.hpp FastNoiseLite.h
+
+.PHONY: all clean format

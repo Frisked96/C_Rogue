@@ -16,8 +16,11 @@ struct Tile {
   bool is_visible;
 
   // Constructor
-  Tile() : material(MaterialType::AIR), object_id(0), is_explored(false), is_visible(false) {}
-  Tile(MaterialType m) : material(m), object_id(0), is_explored(false), is_visible(false) {}
+  Tile()
+      : material(MaterialType::AIR), object_id(0), is_explored(false),
+        is_visible(false) {}
+  Tile(MaterialType m)
+      : material(m), object_id(0), is_explored(false), is_visible(false) {}
 
   // --- Cached lookups for speed ---
   const MaterialProperties &mat() const {

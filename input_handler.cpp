@@ -55,7 +55,8 @@ Action InputHandler::process_string(const std::string &input) const {
 }
 
 Action InputHandler::get_action() const {
-  std::cout << ">       \b\b\b\b\b\b"; // Print prompt and space for input, move back
+  std::cout
+      << ">       \b\b\b\b\b\b"; // Print prompt and space for input, move back
   char input;
   std::cin >> input;
 
