@@ -1,6 +1,6 @@
 # Default compiler
 CXX = "C:\Program Files\LLVM\bin\clang++.exe"
-CXXFLAGS = -std=c++17 -O3 -Wall -Wextra -I. -MMD -MP
+CXXFLAGS = -std=c++20  -O3 -Wall -Wextra -I. -MMD -MP
 
 SRCS = main.cpp \
        engine.cpp \
