@@ -128,7 +128,7 @@ float MapSimulator::balance_basins(Game_map& game_map) {
             int gz = ground_z_[i];
             if (gz + 1 < depth_) {
                 const Tile& t = game_map.get_tile(x, y, gz + 1);
-                if (t.material == MaterialType::WATER_FRESH) total += t.state.moisture;
+                if (t.material == MaterialType::AIR) total += t.state.liquid_volume;
             }
         }
     }

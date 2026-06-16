@@ -78,15 +78,20 @@ int main(int argc, char* argv[]) {
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 const Tile& t = map.get_tile(x, y, z);
-                bool has_water_material = (t.material == MaterialType::WATER_FRESH);
-                bool name_has_water = (t.mat().name.find("Water") != std::string::npos || t.mat().name.find("water") != std::string::npos);
-                bool has_moisture = (t.state.moisture > 1e-6f);
+                bool has_water_material =
+                    (t.material == MaterialType::AIR && t.state.liquid_volume > 0.4f);
+                bool name_has_water =
+                    (t.mat().name.find("Water") != std::string::npos ||
+                     t.mat().name.find("water") != std::string::npos);
+                bool has_moisture = (t.state.liquid_volume > 1e-6f);
 
-                if (has_water_material) water_fresh_tiles++;
-                if (name_has_water) tiles_with_water_in_name++;
+                if (has_water_material)
+                    water_fresh_tiles++;
+                if (name_has_water)
+                    tiles_with_water_in_name++;
                 if (has_moisture) {
                     tiles_with_moisture++;
-                    total_moisture += t.state.moisture;
+                    total_moisture += t.state.liquid_volume;
                 }
 
                 if (has_water_material || has_moisture) {

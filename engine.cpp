@@ -163,8 +163,8 @@ void Engine::handle_input() {
 
           // Buoyancy: Stop falling if we hit deep enough water
           const Tile &current_tile = map->get_tile(nx, ny, nz);
-          if (current_tile.material == MaterialType::WATER_FRESH &&
-              current_tile.state.moisture >= 0.4f) {
+          if (current_tile.material == MaterialType::AIR &&
+              current_tile.state.liquid_volume >= 0.4f) {
             break;
           }
           nz--;
@@ -172,9 +172,9 @@ void Engine::handle_input() {
 
         if (nz < start_z) {
           last_msg = (start_z - nz > 1) ? "You scramble down." : "You descend.";
-        } else if (map->get_tile(nx, ny, nz).material ==
-                   MaterialType::WATER_FRESH) {
-          float m = map->get_tile(nx, ny, nz).state.moisture;
+        } else if (map->get_tile(nx, ny, nz).material == MaterialType::AIR &&
+                   map->get_tile(nx, ny, nz).state.liquid_volume > 0.0f) {
+          float m = map->get_tile(nx, ny, nz).state.liquid_volume;
           if (m >= 0.8f)
             last_msg = "You are swimming.";
           else if (m >= 0.4f)

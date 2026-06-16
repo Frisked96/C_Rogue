@@ -81,8 +81,10 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x,
       int cz = z;
       const Tile *t = &map.get_tile(mx, my, cz);
 
-      // Look down through air to find the first solid/non-air tile
-      while (cz > 0 && t->material == MaterialType::AIR) {
+      // Look down through air to find the first solid or air-with-liquid/ice
+      // tile
+      while (cz > 0 && t->material == MaterialType::AIR &&
+             t->state.liquid_volume <= 0.0f && t->state.frozen_volume <= 0.0f) {
         cz--;
         t = &map.get_tile(mx, my, cz);
       }
@@ -91,19 +93,28 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x,
       int bg_color = 0;
       char glyph = t->get_glyph();
 
-      // Fractional Water Rendering
-      if (t->material == MaterialType::WATER_FRESH && cz > 0) {
-        if (t->state.moisture < 0.4f) {
+      // Fractional Water/Ice Rendering for AIR tiles
+      if (t->material == MaterialType::AIR &&
+          (t->state.liquid_volume > 0.0f || t->state.frozen_volume > 0.0f)) {
+        if (t->state.frozen_volume > 0.0f) {
+          glyph = '*'; // Snow/Ice
+          color = 15;  // White
+        } else if (t->state.liquid_volume < 0.4f && cz > 0) {
           // Shallow water: Render ground below
           const Tile &below = map.get_tile(mx, my, cz - 1);
           if (below.material != MaterialType::AIR) {
             glyph = below.get_glyph();
             color = below.mat().fg_color;
-            // Only tint blue if there's enough water to see (e.g. 15cm)
-            if (t->state.moisture > 0.15f) {
+            // Only tint blue if there's enough water to see
+            if (t->state.liquid_volume > 0.15f) {
               bg_color = 17; // Navy Blue background
             }
           }
+        } else {
+          // Deep water
+          glyph = '~';
+          color = 12;    // Light Blue
+          bg_color = 17; // Navy Blue
         }
       }
 

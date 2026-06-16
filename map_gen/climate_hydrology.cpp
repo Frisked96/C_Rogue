@@ -35,7 +35,7 @@ std::vector<int> compute_ground_heightmap(const Game_map& map) {
             int gz = 0; // default: assume bedrock at z=0 if nothing else found
             for (int z = depth - 1; z >= 0; --z) {
                 MaterialType m = map.get_tile(x, y, z).material;
-                if (m != MaterialType::AIR && m != MaterialType::WATER_FRESH) {
+                if (m != MaterialType::AIR) {
                     gz = z;
                     break;
                 }
@@ -197,7 +197,7 @@ void ClimateSystem::advect() {
     }
 
     // Windward-boundary inflow: edge cells whose wind blows INTO the domain
-    // relax toward ocean_humidity, representing moisture supplied by air
+    // relax toward ocean_humidity, representing liquid_volume supplied by air
     // masses arriving from beyond the map (e.g. surrounding ocean).
     for (int y = 0; y < h_; ++y) {
         ClimateCell& left = cells_[idx(0, y)];
@@ -355,21 +355,16 @@ void add_surface_water(Game_map& map, int x, int y, int ground_z, float depth, c
     while (remaining > 1e-6f && z < depth_map) {
         Tile& t = mtile(map, x, y, z);
 
-        float cap = t.water_capacity(); // AIR and WATER_FRESH both report 1.0
-        float space = std::max(0.0f, cap - t.state.moisture);
+        float cap = t.water_capacity(); // AIR both report 1.0
+        float space = std::max(0.0f, cap - t.state.liquid_volume);
         float add = std::min(remaining, space);
-        t.state.moisture += add;
+        t.state.liquid_volume += add;
         remaining -= add;
-
-        if (t.material == MaterialType::AIR && t.state.moisture > p.pond_form_threshold) {
-            Tile water_tile(MaterialType::WATER_FRESH);
-            water_tile.state = t.state;
-            map.set_tile(x, y, z, water_tile);
-        }
 
         if (remaining <= 1e-6f) break;
         ++z;
-    }
+        }
+
     // If remaining > 0 here, the column is full all the way to the map
     // ceiling - the excess is discarded (extremely rare edge case).
 }
@@ -389,9 +384,9 @@ void apply_precipitation(Game_map& map, const std::vector<int>& ground_z,
             Tile& t = mtile(map, x, y, gz);
 
             float cap = t.water_capacity();
-            float space = std::max(0.0f, cap - t.state.moisture);
+            float space = std::max(0.0f, cap - t.state.liquid_volume);
             float add = std::min(rain, space);
-            t.state.moisture += add;
+            t.state.liquid_volume += add;
 
             float overflow = rain - add;
             if (overflow > 1e-6f) {
@@ -422,23 +417,20 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
             // by the ground's saturated permeability.
             if (gz + 1 < depth_map) {
                 Tile& pond = mtile(map, x, y, gz + 1);
-                if (pond.material == MaterialType::WATER_FRESH && pond.state.moisture > 1e-6f) {
+                if (pond.material == MaterialType::AIR && pond.state.liquid_volume > 1e-6f) {
                     Tile& ground = mtile(map, x, y, gz);
                     float v = soil_variation[i];
                     float theta_s = std::min(1.0f, ground.water_capacity() * v);
-                    float space = theta_s - ground.state.moisture;
+                    float space = theta_s - ground.state.liquid_volume;
                     if (space > 1e-6f) {
                         float k_sat = ground.mat().permeability;
-                        float seep = std::min(std::min(pond.state.moisture, space),
+                        float seep = std::min(std::min(pond.state.liquid_volume, space),
                                                k_sat * p.percolation_rate_scale);
                         if (seep > 1e-6f) {
-                            pond.state.moisture -= seep;
-                            ground.state.moisture += seep;
-                            if (pond.state.moisture <= 1e-5f) {
-                                Tile air_tile(MaterialType::AIR);
-                                air_tile.state = pond.state;
-                                air_tile.state.moisture = 0.0f;
-                                map.set_tile(x, y, gz + 1, air_tile);
+                            pond.state.liquid_volume -= seep;
+                            ground.state.liquid_volume += seep;
+                            if (pond.state.liquid_volume <= 1e-5f) {
+                                pond.state.liquid_volume = 0.0f;
                             }
                         }
                     }
@@ -452,28 +444,28 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
                 Tile& t = mtile(map, x, y, z);
 
                 if (t.material == MaterialType::AIR) {
-                    // Underground cave: any moisture here (e.g. dropped into
+                    // Underground cave: any liquid_volume here (e.g. dropped into
                     // it by the tile above this substep) falls straight
                     // through to the tile below. It will eventually land on
                     // a solid floor, where normal drainage + the overflow
                     // check below turn it into a cave lake if the floor is
                     // saturated.
-                    if (t.state.moisture > 1e-6f) {
+                    if (t.state.liquid_volume > 1e-6f) {
                         if (z > 0) {
-                            mtile(map, x, y, z - 1).state.moisture += t.state.moisture;
+                            mtile(map, x, y, z - 1).state.liquid_volume += t.state.liquid_volume;
                         } else {
-                            groundwater.recharge(x, y, t.state.moisture);
+                            groundwater.recharge(x, y, t.state.liquid_volume);
                         }
-                        t.state.moisture = 0.0f;
+                        t.state.liquid_volume = 0.0f;
                     }
                     continue;
                 }
 
                 // soil_variation only perturbs porous solids - AIR and
                 // WATER_FRESH always keep capacity == 1.0.
-                float v = (t.material == MaterialType::WATER_FRESH) ? 1.0f : soil_variation[i];
+                float v = (t.material == MaterialType::AIR) ? 1.0f : soil_variation[i];
 
-                float theta = t.state.moisture;
+                float theta = t.state.liquid_volume;
                 float theta_s = std::min(1.0f, t.water_capacity() * v);
                 float theta_fc = std::min(theta_s, t.field_capacity() * v);
                 float theta_wp = std::min(theta_fc, t.wilting_point() * v);
@@ -483,7 +475,7 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
                 float k_theta;
                 if (span < 1e-5f) {
                     // Degenerate (near-zero porosity, e.g. bedrock): allow a
-                    // tiny permeability-limited seep if there's any moisture.
+                    // tiny permeability-limited seep if there's any liquid_volume.
                     k_theta = (theta > 1e-5f) ? k_sat : 0.0f;
                 } else {
                     float wetness = std::clamp((theta - theta_wp) / span, 0.0f, 1.0f);
@@ -497,7 +489,7 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
                 }
 
                 if (drainage > 1e-6f) {
-                    t.state.moisture -= drainage;
+                    t.state.liquid_volume -= drainage;
 
                     if (z > 0) {
                         Tile& below = mtile(map, x, y, z - 1);
@@ -510,29 +502,26 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
                         // the bottom of the soil column increases W"),
                         // rather than needing to slowly cascade tile-by-tile
                         // through many bedrock layers.
-                        bool t_is_soil = t.mat().fertility_base > 0.0f;
-                        bool below_is_bedrock = below.mat().fertility_base <= 0.0f && below.mat().is_solid;
+                        bool t_is_soil = t.material == MaterialType::SOIL_BASE;
+                        bool below_is_bedrock =
+                            below.material == MaterialType::STONE_BASE &&
+                            below.mat().is_solid;
 
                         if (t_is_soil && below_is_bedrock) {
                             groundwater.recharge(x, y, drainage);
                         } else {
                             float below_cap = below.water_capacity();
-                            float below_space = std::max(0.0f, below_cap - below.state.moisture);
+                            float below_space =
+                                std::max(0.0f, below_cap - below.state.liquid_volume);
                             float into_below = std::min(drainage, below_space);
-                            below.state.moisture += into_below;
-
-                            if (below.material == MaterialType::AIR && below.state.moisture > p.pond_form_threshold) {
-                                Tile water_tile(MaterialType::WATER_FRESH);
-                                water_tile.state = below.state;
-                                map.set_tile(x, y, z - 1, water_tile);
-                            }
+                            below.state.liquid_volume += into_below;
 
                             float overflow_back = drainage - into_below;
                             if (overflow_back > 1e-6f) {
                                 // Below is already saturated; keep the water here
                                 // for now (it will try again next substep, or
                                 // pond upward via the overflow check below).
-                                t.state.moisture += overflow_back;
+                                t.state.liquid_volume += overflow_back;
                             }
                         }
                     } else {
@@ -543,20 +532,15 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
                 // Saturation overflow: push any excess above capacity upward
                 // (into a surface pond at z==gz, or into the tile above for
                 // sub-surface tiles - e.g. a rising cave lake).
-                if (t.state.moisture > theta_s) {
-                    float overflow = t.state.moisture - theta_s;
-                    t.state.moisture = theta_s;
+                if (t.state.liquid_volume > theta_s) {
+                    float overflow = t.state.liquid_volume - theta_s;
+                    t.state.liquid_volume = theta_s;
 
                     if (z == gz) {
                         add_surface_water(map, x, y, gz, overflow, p);
                     } else {
                         Tile& above = mtile(map, x, y, z + 1);
-                        above.state.moisture += overflow;
-                        if (above.material == MaterialType::AIR && above.state.moisture > p.pond_form_threshold) {
-                            Tile water_tile(MaterialType::WATER_FRESH);
-                            water_tile.state = above.state;
-                            map.set_tile(x, y, z + 1, water_tile);
-                        }
+                        above.state.liquid_volume += overflow;
                     }
                 }
             }
@@ -580,23 +564,22 @@ void capillary_rise_step(Game_map& map, const std::vector<int>& ground_z,
                 Tile& upper = mtile(map, x, y, z + 1);
 
                 if (lower.material == MaterialType::AIR || upper.material == MaterialType::AIR) continue;
-                if (lower.material == MaterialType::WATER_FRESH || upper.material == MaterialType::WATER_FRESH) continue;
 
                 float upper_fc = upper.field_capacity() * v;
-                if (upper.state.moisture >= upper_fc) continue;
+                if (upper.state.liquid_volume >= upper_fc) continue;
 
-                float diff = lower.state.moisture - upper.state.moisture;
+                float diff = lower.state.liquid_volume - upper.state.liquid_volume;
                 if (diff <= 0.0f) continue;
 
                 float rise = p.capillary_rate * diff;
 
                 float lower_wp = lower.wilting_point() * v;
-                rise = std::min(rise, lower.state.moisture - lower_wp);
-                rise = std::min(rise, upper_fc - upper.state.moisture);
+                rise = std::min(rise, lower.state.liquid_volume - lower_wp);
+                rise = std::min(rise, upper_fc - upper.state.liquid_volume);
                 if (rise <= 0.0f) continue;
 
-                lower.state.moisture -= rise;
-                upper.state.moisture += rise;
+                lower.state.liquid_volume -= rise;
+                upper.state.liquid_volume += rise;
             }
         }
     }
@@ -612,7 +595,7 @@ void overland_flow_step(Game_map& map, const std::vector<int>& ground_z,
         int gz = ground_z[(size_t)y * width + x];
         if (gz + 1 >= depth_map) return 0.0f;
         const Tile& t = map.get_tile(x, y, gz + 1);
-        if (t.material == MaterialType::WATER_FRESH) return t.state.moisture;
+        if (t.material == MaterialType::AIR) return t.state.liquid_volume;
         return 0.0f;
     };
 
@@ -678,14 +661,11 @@ void overland_flow_step(Game_map& map, const std::vector<int>& ground_z,
                 add_surface_water(map, x, y, gz, net, p);
             } else if (gz + 1 < depth_map) {
                 Tile& t = mtile(map, x, y, gz + 1);
-                t.state.moisture += net; // net is negative
-                if (t.state.moisture <= 1e-5f && t.material == MaterialType::WATER_FRESH) {
-                    Tile air_tile(MaterialType::AIR);
-                    air_tile.state = t.state;
-                    air_tile.state.moisture = 0.0f;
-                    map.set_tile(x, y, gz + 1, air_tile);
-                } else if (t.state.moisture < 0.0f) {
-                    t.state.moisture = 0.0f;
+                t.state.liquid_volume += net; // net is negative
+                if (t.state.liquid_volume <= 1e-5f && t.material == MaterialType::AIR) {
+                    t.state.liquid_volume = 0.0f;
+                } else if (t.state.liquid_volume < 0.0f) {
+                    t.state.liquid_volume = 0.0f;
                 }
             }
         }
@@ -708,7 +688,7 @@ float evapotranspiration_step(Game_map& map, ClimateSystem& climate,
             bool is_pond = false;
             if (gz + 1 < depth_map) {
                 const Tile& above = map.get_tile(x, y, gz + 1);
-                if (above.material == MaterialType::WATER_FRESH && above.state.moisture > 1e-5f) {
+                if (above.material == MaterialType::AIR && above.state.liquid_volume > 1e-5f) {
                     z = gz + 1;
                     is_pond = true;
                 }
@@ -723,7 +703,7 @@ float evapotranspiration_step(Game_map& map, ClimateSystem& climate,
                 float fc = t.field_capacity();
                 float wp = t.wilting_point();
                 float span = fc - wp;
-                wetness = (span > 1e-6f) ? std::clamp((t.state.moisture - wp) / span, 0.0f, 1.0f) : 0.0f;
+                wetness = (span > 1e-6f) ? std::clamp((t.state.liquid_volume - wp) / span, 0.0f, 1.0f) : 0.0f;
             }
             if (wetness <= 0.0f) continue;
 
@@ -735,19 +715,16 @@ float evapotranspiration_step(Game_map& map, ClimateSystem& climate,
 
             float evap = p.evap_coeff * wind_speed * vpd * wetness;
 
-            float min_moisture = is_pond ? 0.0f : t.wilting_point();
-            evap = std::min(evap, std::max(0.0f, t.state.moisture - min_moisture));
+            float min_liquid_volume = is_pond ? 0.0f : t.wilting_point();
+            evap = std::min(evap, std::max(0.0f, t.state.liquid_volume - min_liquid_volume));
             if (evap <= 1e-7f) continue;
 
-            t.state.moisture -= evap;
+            t.state.liquid_volume -= evap;
             total += evap;
             climate.add_vapor(x, y, evap);
 
-            if (is_pond && t.state.moisture <= 1e-5f) {
-                Tile air_tile(MaterialType::AIR);
-                air_tile.state = t.state;
-                air_tile.state.moisture = 0.0f;
-                map.set_tile(x, y, z, air_tile);
+            if (is_pond && t.state.liquid_volume <= 1e-5f) {
+                t.state.liquid_volume = 0.0f;
             }
         }
     }
