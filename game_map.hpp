@@ -37,8 +37,9 @@ public:
     const SurfaceCover& get_surface(int x, int y) const;
 
     // --- Sparse soil chemistry ---
-    SoilChemistry&       get_soil_chemistry(int x, int y, int z);
+    SoilChemistry*       get_soil_chemistry_ptr(int x, int y, int z);
     const SoilChemistry& get_soil_chemistry(int x, int y, int z) const;
+    SoilChemistry&       ensure_soil_chemistry(int x, int y, int z);
     bool                 has_soil_chemistry(int x, int y, int z) const;
     void                 erase_soil_chemistry(int x, int y, int z);
 

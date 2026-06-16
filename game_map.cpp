@@ -39,14 +39,17 @@ const SurfaceCover& Game_map::get_surface(int x, int y) const {
 }
 
 // --- Sparse soil chemistry ---
-SoilChemistry& Game_map::get_soil_chemistry(int x, int y, int z) {
-    int idx = get_index(x, y, z);
-    return soil_chem[idx];   // default‑constructed if missing
+SoilChemistry* Game_map::get_soil_chemistry_ptr(int x, int y, int z) {
+    auto it = soil_chem.find(get_index(x, y, z));
+    return (it != soil_chem.end()) ? &it->second : nullptr;
 }
 const SoilChemistry& Game_map::get_soil_chemistry(int x, int y, int z) const {
     static SoilChemistry default_chem;
     auto it = soil_chem.find(get_index(x, y, z));
     return (it != soil_chem.end()) ? it->second : default_chem;
+}
+SoilChemistry& Game_map::ensure_soil_chemistry(int x, int y, int z) {
+    return soil_chem[get_index(x, y, z)];
 }
 bool Game_map::has_soil_chemistry(int x, int y, int z) const {
     return soil_chem.find(get_index(x, y, z)) != soil_chem.end();

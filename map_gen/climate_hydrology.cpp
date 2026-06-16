@@ -3,6 +3,9 @@
 
 #include <cmath>
 #include <algorithm>
+#include <future>
+#include <thread>
+#include <atomic>
 
 namespace hydro {
 
@@ -98,67 +101,91 @@ void ClimateSystem::update_wind(const std::vector<int>& ground_z, NoiseGen& nois
         return (float)ground_z[idx(x, y)];
     };
 
-    for (int y = 0; y < h_; ++y) {
-        for (int x = 0; x < w_; ++x) {
-            // Large-scale, slowly-varying noise perturbation on top of the
-            // seasonal prevailing direction.
-            float nu = noise.fbm2D((float)x * 0.015f + 1000.0f, (float)y * 0.015f + 1000.0f, 3);
-            float nv = noise.fbm2D((float)x * 0.015f - 2000.0f, (float)y * 0.015f - 3000.0f, 3);
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (h_ + num_threads - 1) / num_threads;
 
-            float u0 = base_u + nu;
-            float v0 = base_v + nv;
-            float speed = std::sqrt(u0 * u0 + v0 * v0);
-            if (speed < 1e-5f) {
-                speed = 1e-5f;
-                u0 = 1e-5f;
-            }
+    std::vector<std::future<void>> futures;
 
-            // Local elevation gradient (central difference, clamped at edges).
-            float gx = (elev(x + 1, y) - elev(x - 1, y)) * 0.5f;
-            float gy = (elev(x, y + 1) - elev(x, y - 1)) * 0.5f;
-            float slope = std::sqrt(gx * gx + gy * gy);
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(h_, (t + 1) * chunk_size);
+        if (start_y >= h_) break;
 
-            // Steeper terrain deflects wind toward flowing along contours
-            // (valleys/canyons); flatter terrain leaves wind unperturbed.
-            // A relief of ~4 tiles between neighbours counts as "very steep".
-            float steepness = std::clamp(slope / 4.0f, 0.0f, 1.0f);
+        futures.push_back(std::async(std::launch::async, [=, &ground_z, &noise]() {
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < w_; ++x) {
+                    float nu = noise.fbm2D((float)x * 0.015f + 1000.0f, (float)y * 0.015f + 1000.0f, 3);
+                    float nv = noise.fbm2D((float)x * 0.015f - 2000.0f, (float)y * 0.015f - 3000.0f, 3);
 
-            float wu = u0, wv = v0;
-            if (slope > 1e-5f) {
-                float cx = -gy, cy = gx; // perpendicular to the gradient (contour direction)
-                float dirx = u0 / speed, diry = v0 / speed;
-                if (cx * dirx + cy * diry < 0.0f) { cx = -cx; cy = -cy; } // keep roughly aligned with prevailing flow
-                float clen = std::sqrt(cx * cx + cy * cy);
-                cx /= clen; cy /= clen;
+                    float u0 = base_u + nu;
+                    float v0 = base_v + nv;
+                    float speed = std::sqrt(u0 * u0 + v0 * v0);
+                    if (speed < 1e-5f) {
+                        speed = 1e-5f;
+                        u0 = 1e-5f;
+                    }
 
-                float bx = dirx * (1.0f - steepness) + cx * steepness;
-                float by = diry * (1.0f - steepness) + cy * steepness;
-                float blen = std::sqrt(bx * bx + by * by);
-                if (blen > 1e-5f) {
-                    wu = bx / blen * speed;
-                    wv = by / blen * speed;
+                    float gx = (elev(x + 1, y) - elev(x - 1, y)) * 0.5f;
+                    float gy = (elev(x, y + 1) - elev(x, y - 1)) * 0.5f;
+                    float slope = std::sqrt(gx * gx + gy * gy);
+
+                    float steepness = std::clamp(slope / 4.0f, 0.0f, 1.0f);
+
+                    float wu = u0, wv = v0;
+                    if (slope > 1e-5f) {
+                        float cx = -gy, cy = gx;
+                        float dirx = u0 / speed, diry = v0 / speed;
+                        if (cx * dirx + cy * diry < 0.0f) { cx = -cx; cy = -cy; }
+                        float clen = std::sqrt(cx * cx + cy * cy);
+                        cx /= clen; cy /= clen;
+
+                        float bx = dirx * (1.0f - steepness) + cx * steepness;
+                        float by = diry * (1.0f - steepness) + cy * steepness;
+                        float blen = std::sqrt(bx * bx + by * by);
+                        if (blen > 1e-5f) {
+                            wu = bx / blen * speed;
+                            wv = by / blen * speed;
+                        }
+                    }
+
+                    ClimateCell& c = cells_[idx(x, y)];
+                    c.wind_u = wu;
+                    c.wind_v = wv;
+                    c.upslope = gx * wu + gy * wv;
                 }
             }
-
-            ClimateCell& c = cells_[idx(x, y)];
-            c.wind_u = wu;
-            c.wind_v = wv;
-            // dot(elevation gradient, wind): >0 means the wind is blowing
-            // toward higher ground (windward / ascending air).
-            c.upslope = gx * wu + gy * wv;
-        }
+        }));
     }
+
+    for (auto& f : futures) f.get();
 }
 
 void ClimateSystem::update_temperature(const std::vector<int>& ground_z, float season_phase) {
     float seasonal = params_.seasonal_amplitude_K * std::sin(season_phase * 2.0f * PI);
-    for (int y = 0; y < h_; ++y) {
-        for (int x = 0; x < w_; ++x) {
-            ClimateCell& c = cells_[idx(x, y)];
-            c.temperature = params_.sea_level_temp_K + seasonal
-                          - params_.lapse_rate_K_per_tile * (float)ground_z[idx(x, y)];
-        }
+
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (h_ + num_threads - 1) / num_threads;
+
+    std::vector<std::future<void>> futures;
+
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(h_, (t + 1) * chunk_size);
+        if (start_y >= h_) break;
+
+        futures.push_back(std::async(std::launch::async, [=, &ground_z]() {
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < w_; ++x) {
+                    ClimateCell& c = cells_[idx(x, y)];
+                    c.temperature = params_.sea_level_temp_K + seasonal
+                                  - params_.lapse_rate_K_per_tile * (float)ground_z[idx(x, y)];
+                }
+            }
+        }));
     }
+    for (auto& f : futures) f.get();
 }
 
 void ClimateSystem::advect() {
@@ -186,9 +213,7 @@ void ClimateSystem::advect() {
 
             delta[idx(x, y)] -= (flux_x + flux_y);
             if (nx >= 0 && nx < w_) delta[idx(nx, y)] += flux_x;
-            // else: flows off the map edge - lost to "beyond the simulated region"
             if (ny >= 0 && ny < h_) delta[idx(x, ny)] += flux_y;
-            // else: same
         }
     }
 
@@ -196,9 +221,7 @@ void ClimateSystem::advect() {
         cells_[i].vapor = std::max(0.0f, cells_[i].vapor + delta[i]);
     }
 
-    // Windward-boundary inflow: edge cells whose wind blows INTO the domain
-    // relax toward ocean_humidity, representing liquid_volume supplied by air
-    // masses arriving from beyond the map (e.g. surrounding ocean).
+    // Windward-boundary inflow
     for (int y = 0; y < h_; ++y) {
         ClimateCell& left = cells_[idx(0, y)];
         if (left.wind_u > 0.0f) left.vapor += params_.boundary_relax * (params_.ocean_humidity - left.vapor);
@@ -218,44 +241,53 @@ void ClimateSystem::advect() {
 
 std::vector<float> ClimateSystem::step_precipitation(const std::vector<int>& ground_z,
                                                        NoiseGen& noise, float day_index) {
-    (void)ground_z;
     std::vector<float> precip(cells_.size(), 0.0f);
 
-    for (int y = 0; y < h_; ++y) {
-        for (int x = 0; x < w_; ++x) {
-            ClimateCell& c = cells_[idx(x, y)];
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (h_ + num_threads - 1) / num_threads;
 
-            // Orographic precipitation: extra adiabatic cooling on windward
-            // slopes lowers saturation capacity (more rain); leeward slopes
-            // get extra warming (less rain - rain shadow).
-            float t_eff = c.temperature - params_.orographic_gain * c.upslope;
-            float cap = qsat(t_eff, params_);
+    std::vector<std::future<void>> futures;
 
-            float rain = 0.0f;
-            float excess = c.vapor - cap;
-            if (excess > 0.0f) {
-                rain = excess * params_.rain_out_fraction;
-                c.vapor -= rain;
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(h_, (t + 1) * chunk_size);
+        if (start_y >= h_) break;
+
+        futures.push_back(std::async(std::launch::async, [=, &ground_z, &noise, &precip]() {
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < w_; ++x) {
+                    ClimateCell& c = cells_[idx(x, y)];
+
+                    float t_eff = c.temperature - params_.orographic_gain * c.upslope;
+                    float cap = qsat(t_eff, params_);
+
+                    float rain = 0.0f;
+                    float excess = c.vapor - cap;
+                    if (excess > 0.0f) {
+                        rain = excess * params_.rain_out_fraction;
+                        c.vapor -= rain;
+                    }
+
+                    float storm = noise.fbm2D((float)x * 0.07f + day_index * 0.31f,
+                                               (float)y * 0.07f - day_index * 0.17f, 2);
+                    if (storm > params_.convective_threshold) {
+                        float intensity = (storm - params_.convective_threshold)
+                                         / (1.0f - params_.convective_threshold);
+                        float convective = params_.convective_intensity * intensity;
+                        float draw = std::min(c.vapor, convective);
+                        c.vapor -= draw;
+                        rain += draw;
+                    }
+
+                    c.vapor = std::max(0.0f, c.vapor);
+                    precip[idx(x, y)] = rain;
+                }
             }
-
-            // Convective storms: noise-driven, independent of orography, so
-            // flat plains still get occasional rain. `day_index` drives a
-            // slow drift through the noise field so storms come and go.
-            float storm = noise.fbm2D((float)x * 0.07f + day_index * 0.31f,
-                                       (float)y * 0.07f - day_index * 0.17f, 2);
-            if (storm > params_.convective_threshold) {
-                float intensity = (storm - params_.convective_threshold)
-                                 / (1.0f - params_.convective_threshold);
-                float convective = params_.convective_intensity * intensity;
-                float draw = std::min(c.vapor, convective);
-                c.vapor -= draw;
-                rain += draw;
-            }
-
-            c.vapor = std::max(0.0f, c.vapor);
-            precip[idx(x, y)] = rain;
-        }
+        }));
     }
+    for (auto& f : futures) f.get();
+
     return precip;
 }
 
@@ -405,149 +437,131 @@ void soil_percolation_step(Game_map& map, const std::vector<int>& ground_z,
     int height = map.get_height();
     int depth_map = map.get_depth();
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int i = y * width + x;
-            int gz = ground_z[i];
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (height + num_threads - 1) / num_threads;
 
-            // --- Pond seepage into ground ---
-            // The main top-down loop below never visits gz+1 (the surface
-            // pond), so without this step standing water could only leave a
-            // column via evaporation or lateral D8 flow - it would never
-            // infiltrate the ground beneath it. Move water from a pond at
-            // gz+1 into the ground tile at gz, limited by spare capacity and
-            // by the ground's saturated permeability.
-            if (gz + 1 < depth_map) {
-                Tile& pond = mtile(map, x, y, gz + 1);
-                if (pond.material == MaterialType::AIR && pond.state.liquid_volume > 1e-6f) {
-                    Tile& ground = mtile(map, x, y, gz);
-                    float v = soil_variation[i];
-                    float theta_s = std::min(1.0f, ground.water_capacity() * v);
-                    float space = theta_s - ground.state.liquid_volume;
-                    if (space > 1e-6f) {
-                        float k_sat = ground.mat().permeability;
-                        float seep = std::min(std::min(pond.state.liquid_volume, space),
-                                               k_sat * p.percolation_rate_scale);
-                        if (seep > 1e-6f) {
-                            pond.state.liquid_volume -= seep;
-                            ground.state.liquid_volume += seep;
-                            if (pond.state.liquid_volume <= 1e-5f) {
-                                pond.state.liquid_volume = 0.0f;
+    std::vector<std::future<void>> futures;
+
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(height, (t + 1) * chunk_size);
+        if (start_y >= height) break;
+
+        futures.push_back(std::async(std::launch::async, [=, &map, &ground_z, &soil_variation, &p, &groundwater]() {
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    int i = y * width + x;
+                    int gz = ground_z[i];
+
+                    // --- Pond seepage into ground ---
+                    if (gz + 1 < depth_map) {
+                        Tile& pond = mtile(map, x, y, gz + 1);
+                        if (pond.material == MaterialType::AIR && pond.state.liquid_volume > 1e-6f) {
+                            Tile& ground = mtile(map, x, y, gz);
+                            float v = soil_variation[i];
+                            float theta_s = std::min(1.0f, ground.water_capacity() * v);
+                            float space = theta_s - ground.state.liquid_volume;
+                            if (space > 1e-6f) {
+                                float k_sat = ground.mat().permeability;
+                                float seep = std::min(std::min(pond.state.liquid_volume, space),
+                                                       k_sat * p.percolation_rate_scale);
+                                if (seep > 1e-6f) {
+                                    pond.state.liquid_volume -= seep;
+                                    ground.state.liquid_volume += seep;
+                                    if (pond.state.liquid_volume <= 1e-5f) {
+                                        pond.state.liquid_volume = 0.0f;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    for (int z = gz; z >= 0; --z) {
+                        Tile& t = mtile(map, x, y, z);
+
+                        if (t.material == MaterialType::AIR) {
+                            if (t.state.liquid_volume > 1e-6f) {
+                                if (z > 0) {
+                                    mtile(map, x, y, z - 1).state.liquid_volume += t.state.liquid_volume;
+                                } else {
+                                    groundwater.recharge(x, y, t.state.liquid_volume);
+                                }
+                                t.state.liquid_volume = 0.0f;
+                            }
+                            continue;
+                        }
+
+                        float v = (t.material == MaterialType::AIR) ? 1.0f : soil_variation[i];
+
+                        float theta = t.state.liquid_volume;
+                        float theta_s = std::min(1.0f, t.water_capacity() * v);
+                        float theta_fc = std::min(theta_s, t.field_capacity() * v);
+                        float theta_wp = std::min(theta_fc, t.wilting_point() * v);
+
+                        float k_sat = t.mat().permeability;
+                        float span = theta_s - theta_wp;
+                        float k_theta;
+                        if (span < 1e-5f) {
+                            k_theta = (theta > 1e-5f) ? k_sat : 0.0f;
+                        } else {
+                            float wetness = std::clamp((theta - theta_wp) / span, 0.0f, 1.0f);
+                            k_theta = k_sat * wetness * wetness * wetness;
+                        }
+
+                        float drainage = 0.0f;
+                        if (theta > theta_fc) {
+                            float available = theta - theta_fc;
+                            drainage = std::max(0.0f, std::min(available, k_theta * p.percolation_rate_scale));
+                        }
+
+                        if (drainage > 1e-6f) {
+                            t.state.liquid_volume -= drainage;
+
+                            if (z > 0) {
+                                Tile& below = mtile(map, x, y, z - 1);
+                                bool t_is_soil = t.material == MaterialType::SOIL_BASE;
+                                bool below_is_bedrock =
+                                    below.material == MaterialType::STONE_BASE &&
+                                    below.mat().is_solid;
+
+                                if (t_is_soil && below_is_bedrock) {
+                                    groundwater.recharge(x, y, drainage);
+                                } else {
+                                    float below_cap = below.water_capacity();
+                                    float below_space =
+                                        std::max(0.0f, below_cap - below.state.liquid_volume);
+                                    float into_below = std::min(drainage, below_space);
+                                    below.state.liquid_volume += into_below;
+
+                                    float overflow_back = drainage - into_below;
+                                    if (overflow_back > 1e-6f) {
+                                        t.state.liquid_volume += overflow_back;
+                                    }
+                                }
+                            } else {
+                                groundwater.recharge(x, y, drainage);
+                            }
+                        }
+
+                        if (t.state.liquid_volume > theta_s) {
+                            float overflow = t.state.liquid_volume - theta_s;
+                            t.state.liquid_volume = theta_s;
+
+                            if (z == gz) {
+                                add_surface_water(map, x, y, gz, overflow, p);
+                            } else {
+                                Tile& above = mtile(map, x, y, z + 1);
+                                above.state.liquid_volume += overflow;
                             }
                         }
                     }
                 }
             }
-
-            // Process this column top-down so that water draining out of a
-            // tile is visible to the tile below it within the same pass
-            // (cascading drainage, and "free-fall" through any AIR voids).
-            for (int z = gz; z >= 0; --z) {
-                Tile& t = mtile(map, x, y, z);
-
-                if (t.material == MaterialType::AIR) {
-                    // Underground cave: any liquid_volume here (e.g. dropped into
-                    // it by the tile above this substep) falls straight
-                    // through to the tile below. It will eventually land on
-                    // a solid floor, where normal drainage + the overflow
-                    // check below turn it into a cave lake if the floor is
-                    // saturated.
-                    if (t.state.liquid_volume > 1e-6f) {
-                        if (z > 0) {
-                            mtile(map, x, y, z - 1).state.liquid_volume += t.state.liquid_volume;
-                        } else {
-                            groundwater.recharge(x, y, t.state.liquid_volume);
-                        }
-                        t.state.liquid_volume = 0.0f;
-                    }
-                    continue;
-                }
-
-                // soil_variation only perturbs porous solids - AIR and
-                // WATER_FRESH always keep capacity == 1.0.
-                float v = (t.material == MaterialType::AIR) ? 1.0f : soil_variation[i];
-
-                float theta = t.state.liquid_volume;
-                float theta_s = std::min(1.0f, t.water_capacity() * v);
-                float theta_fc = std::min(theta_s, t.field_capacity() * v);
-                float theta_wp = std::min(theta_fc, t.wilting_point() * v);
-
-                float k_sat = t.mat().permeability;
-                float span = theta_s - theta_wp;
-                float k_theta;
-                if (span < 1e-5f) {
-                    // Degenerate (near-zero porosity, e.g. bedrock): allow a
-                    // tiny permeability-limited seep if there's any liquid_volume.
-                    k_theta = (theta > 1e-5f) ? k_sat : 0.0f;
-                } else {
-                    float wetness = std::clamp((theta - theta_wp) / span, 0.0f, 1.0f);
-                    k_theta = k_sat * wetness * wetness * wetness;
-                }
-
-                float drainage = 0.0f;
-                if (theta > theta_fc) {
-                    float available = theta - theta_fc;
-                    drainage = std::max(0.0f, std::min(available, k_theta * p.percolation_rate_scale));
-                }
-
-                if (drainage > 1e-6f) {
-                    t.state.liquid_volume -= drainage;
-
-                    if (z > 0) {
-                        Tile& below = mtile(map, x, y, z - 1);
-
-                        // "Soil" = has nonzero fertility (an existing
-                        // material-db property). "Bedrock" = no fertility
-                        // and solid. Water leaving the bottom of the soil
-                        // column recharges the deep aquifer directly, per
-                        // the design notes ("Recharge from percolation from
-                        // the bottom of the soil column increases W"),
-                        // rather than needing to slowly cascade tile-by-tile
-                        // through many bedrock layers.
-                        bool t_is_soil = t.material == MaterialType::SOIL_BASE;
-                        bool below_is_bedrock =
-                            below.material == MaterialType::STONE_BASE &&
-                            below.mat().is_solid;
-
-                        if (t_is_soil && below_is_bedrock) {
-                            groundwater.recharge(x, y, drainage);
-                        } else {
-                            float below_cap = below.water_capacity();
-                            float below_space =
-                                std::max(0.0f, below_cap - below.state.liquid_volume);
-                            float into_below = std::min(drainage, below_space);
-                            below.state.liquid_volume += into_below;
-
-                            float overflow_back = drainage - into_below;
-                            if (overflow_back > 1e-6f) {
-                                // Below is already saturated; keep the water here
-                                // for now (it will try again next substep, or
-                                // pond upward via the overflow check below).
-                                t.state.liquid_volume += overflow_back;
-                            }
-                        }
-                    } else {
-                        groundwater.recharge(x, y, drainage);
-                    }
-                }
-
-                // Saturation overflow: push any excess above capacity upward
-                // (into a surface pond at z==gz, or into the tile above for
-                // sub-surface tiles - e.g. a rising cave lake).
-                if (t.state.liquid_volume > theta_s) {
-                    float overflow = t.state.liquid_volume - theta_s;
-                    t.state.liquid_volume = theta_s;
-
-                    if (z == gz) {
-                        add_surface_water(map, x, y, gz, overflow, p);
-                    } else {
-                        Tile& above = mtile(map, x, y, z + 1);
-                        above.state.liquid_volume += overflow;
-                    }
-                }
-            }
-        }
+        }));
     }
+
+    for (auto& f : futures) f.get();
 }
 
 void capillary_rise_step(Game_map& map, const std::vector<int>& ground_z,
@@ -555,36 +569,52 @@ void capillary_rise_step(Game_map& map, const std::vector<int>& ground_z,
     int width = map.get_width();
     int height = map.get_height();
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int i = y * width + x;
-            int gz = ground_z[i];
-            float v = soil_variation[i];
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (height + num_threads - 1) / num_threads;
 
-            for (int z = 0; z < gz; ++z) {
-                Tile& lower = mtile(map, x, y, z);
-                Tile& upper = mtile(map, x, y, z + 1);
+    std::vector<std::future<void>> futures;
 
-                if (lower.material == MaterialType::AIR || upper.material == MaterialType::AIR) continue;
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(height, (t + 1) * chunk_size);
+        if (start_y >= height) break;
 
-                float upper_fc = upper.field_capacity() * v;
-                if (upper.state.liquid_volume >= upper_fc) continue;
+        futures.push_back(std::async(std::launch::async, [=, &map, &ground_z, &soil_variation, &p]() {
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    int i = y * width + x;
+                    int gz = ground_z[i];
+                    float v = soil_variation[i];
 
-                float diff = lower.state.liquid_volume - upper.state.liquid_volume;
-                if (diff <= 0.0f) continue;
+                    for (int z = 0; z < gz; ++z) {
+                        Tile& lower = mtile(map, x, y, z);
+                        Tile& upper = mtile(map, x, y, z + 1);
 
-                float rise = p.capillary_rate * diff;
+                        if (lower.material == MaterialType::AIR || upper.material == MaterialType::AIR) continue;
 
-                float lower_wp = lower.wilting_point() * v;
-                rise = std::min(rise, lower.state.liquid_volume - lower_wp);
-                rise = std::min(rise, upper_fc - upper.state.liquid_volume);
-                if (rise <= 0.0f) continue;
+                        float upper_fc = upper.field_capacity() * v;
+                        if (upper.state.liquid_volume >= upper_fc) continue;
 
-                lower.state.liquid_volume -= rise;
-                upper.state.liquid_volume += rise;
+                        float diff = lower.state.liquid_volume - upper.state.liquid_volume;
+                        if (diff <= 0.0f) continue;
+
+                        float rise = p.capillary_rate * diff;
+
+                        float lower_wp = lower.wilting_point() * v;
+                        rise = std::min(rise, lower.state.liquid_volume - lower_wp);
+                        rise = std::min(rise, upper_fc - upper.state.liquid_volume);
+                        if (rise <= 0.0f) continue;
+
+                        lower.state.liquid_volume -= rise;
+                        upper.state.liquid_volume += rise;
+                    }
+                }
             }
-        }
+        }));
     }
+
+    for (auto& f : futures) f.get();
 }
 
 void overland_flow_step(Game_map& map, const std::vector<int>& ground_z,
@@ -679,57 +709,75 @@ float evapotranspiration_step(Game_map& map, ClimateSystem& climate,
     int width = map.get_width();
     int height = map.get_height();
     int depth_map = map.get_depth();
-    float total = 0.0f;
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            int i = y * width + x;
-            int gz = ground_z[i];
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
+    int chunk_size = (height + num_threads - 1) / num_threads;
 
-            int z = gz;
-            bool is_pond = false;
-            if (gz + 1 < depth_map) {
-                const Tile& above = map.get_tile(x, y, gz + 1);
-                if (above.material == MaterialType::AIR && above.state.liquid_volume > 1e-5f) {
-                    z = gz + 1;
-                    is_pond = true;
+    std::vector<std::future<float>> futures;
+
+    for (int t = 0; t < num_threads; ++t) {
+        int start_y = t * chunk_size;
+        int end_y = std::min(height, (t + 1) * chunk_size);
+        if (start_y >= height) break;
+
+        futures.push_back(std::async(std::launch::async, [=, &map, &climate, &ground_z, &p]() {
+            float thread_total = 0.0f;
+            for (int y = start_y; y < end_y; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    int i = y * width + x;
+                    int gz = ground_z[i];
+
+                    int z = gz;
+                    bool is_pond = false;
+                    if (gz + 1 < depth_map) {
+                        const Tile& above = map.get_tile(x, y, gz + 1);
+                        if (above.material == MaterialType::AIR && above.state.liquid_volume > 1e-5f) {
+                            z = gz + 1;
+                            is_pond = true;
+                        }
+                    }
+
+                    Tile& t = mtile(map, x, y, z);
+
+                    float wetness;
+                    if (is_pond) {
+                        wetness = 1.0f;
+                    } else {
+                        float fc = t.field_capacity();
+                        float wp = t.wilting_point();
+                        float span = fc - wp;
+                        wetness = (span > 1e-6f) ? std::clamp((t.state.liquid_volume - wp) / span, 0.0f, 1.0f) : 0.0f;
+                    }
+                    if (wetness <= 0.0f) continue;
+
+                    const ClimateCell& c = climate.at(x, y);
+                    float wind_speed = std::sqrt(c.wind_u * c.wind_u + c.wind_v * c.wind_v);
+                    float surface_qsat = qsat(t.state.temperature, p);
+                    float vpd = std::max(0.0f, surface_qsat - c.vapor);
+                    if (vpd <= 0.0f) continue;
+
+                    float evap = p.evap_coeff * wind_speed * vpd * wetness;
+
+                    float min_liquid_volume = is_pond ? 0.0f : t.wilting_point();
+                    evap = std::min(evap, std::max(0.0f, t.state.liquid_volume - min_liquid_volume));
+                    if (evap <= 1e-7f) continue;
+
+                    t.state.liquid_volume -= evap;
+                    thread_total += evap;
+                    climate.add_vapor(x, y, evap);
+
+                    if (is_pond && t.state.liquid_volume <= 1e-5f) {
+                        t.state.liquid_volume = 0.0f;
+                    }
                 }
             }
-
-            Tile& t = mtile(map, x, y, z);
-
-            float wetness;
-            if (is_pond) {
-                wetness = 1.0f;
-            } else {
-                float fc = t.field_capacity();
-                float wp = t.wilting_point();
-                float span = fc - wp;
-                wetness = (span > 1e-6f) ? std::clamp((t.state.liquid_volume - wp) / span, 0.0f, 1.0f) : 0.0f;
-            }
-            if (wetness <= 0.0f) continue;
-
-            const ClimateCell& c = climate.at(x, y);
-            float wind_speed = std::sqrt(c.wind_u * c.wind_u + c.wind_v * c.wind_v);
-            float surface_qsat = qsat(t.state.temperature, p);
-            float vpd = std::max(0.0f, surface_qsat - c.vapor);
-            if (vpd <= 0.0f) continue;
-
-            float evap = p.evap_coeff * wind_speed * vpd * wetness;
-
-            float min_liquid_volume = is_pond ? 0.0f : t.wilting_point();
-            evap = std::min(evap, std::max(0.0f, t.state.liquid_volume - min_liquid_volume));
-            if (evap <= 1e-7f) continue;
-
-            t.state.liquid_volume -= evap;
-            total += evap;
-            climate.add_vapor(x, y, evap);
-
-            if (is_pond && t.state.liquid_volume <= 1e-5f) {
-                t.state.liquid_volume = 0.0f;
-            }
-        }
+            return thread_total;
+        }));
     }
+
+    float total = 0.0f;
+    for (auto& f : futures) total += f.get();
     return total;
 }
 
