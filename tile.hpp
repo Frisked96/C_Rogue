@@ -42,12 +42,25 @@ struct Tile {
     return mat().max_porosity * (1.0f - 0.8f * state.compaction);
   }
 
+  // Saturation water volume fraction (dimensionless)
+  float water_capacity() const {
+    if (material == MaterialType::WATER_FRESH)
+      return 1.0f;
+    return effective_porosity();
+  }
+
+  // Field capacity: moisture level below which drainage stops
+  float field_capacity() const { return mat().field_capacity; }
+
+  // Wilting point: moisture level below which plants can't extract water
+  float wilting_point() const { return mat().wilting_point; }
+
   float get_available_pore_volume() const {
     return get_volume() * effective_porosity();
   }
 
   bool can_plant() const {
-    return mat().fertility_base > 0.0f && state.moisture > 0.05f &&
+    return mat().fertility_base > 0.0f && state.moisture > wilting_point() &&
            state.temperature > 278.0f;
   }
 

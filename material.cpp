@@ -9,83 +9,99 @@ TileState::TileState()
       contamination(0.0f), sediment(0.0f) {}
 
 const MaterialProperties &get_material_properties(MaterialType type) {
-  static const std::unordered_map<MaterialType, MaterialProperties> catalogue =
-      {{MaterialType::AIR,
-        {.name = "Air",
-         .glyph = ' ',
-         .fg_color = 7,
-         .bg_color = 0,
-         .density_kgm3 = 1.2f,
-         .hardness = 0.0f,
-         .compaction_resistance = 1.0f,
-         .max_porosity = 1.0f,
-         .permeability = 100.0f,
-         .thermal_conductivity = 0.024f,
-         .specific_heat = 1006.0f,
-         .shear_strength = 0.0f,
-         .fertility_base = 0.0f,
-         .pH_base = 7.0f,
-         .is_solid = false,
-         .is_liquid = false,
-         .is_opaque = false,
-         .erodibility = 0.0f}},
-       {MaterialType::WATER_FRESH,
-        {.name = "Fresh Water",
-         .glyph = '~',
-         .fg_color = 4,
-         .bg_color = 0,
-         .density_kgm3 = 1000.0f,
-         .hardness = 0.0f,
-         .compaction_resistance = 1.0f,
-         .max_porosity = 1.0f,
-         .permeability = 0.01f,
-         .thermal_conductivity = 0.6f,
-         .specific_heat = 4184.0f,
-         .shear_strength = 0.0f,
-         .fertility_base = 0.0f,
-         .pH_base = 7.0f,
-         .is_solid = false,
-         .is_liquid = true,
-         .is_opaque = false,
-         .erodibility = 0.0f}},
-       {MaterialType::SOIL_BASE,
-        {.name = "Base Soil",
-         .glyph = '.',
-         .fg_color = 3,
-         .bg_color = 0,
-         .density_kgm3 = 1500.0f,
-         .hardness = 0.1f,
-         .compaction_resistance = 0.3f,
-         .max_porosity = 0.4f,
-         .permeability = 0.00001f,
-         .thermal_conductivity = 0.8f,
-         .specific_heat = 850.0f,
-         .shear_strength = 40.0f,
-         .fertility_base = 0.5f,
-         .pH_base = 7.0f,
-         .is_solid = true,
-         .is_liquid = false,
-         .is_opaque = true,
-         .erodibility = 0.5f}},
-       {MaterialType::STONE_BASE,
-        {.name = "Base Stone",
-         .glyph = '.',
-         .fg_color = 8,
-         .bg_color = 0,
-         .density_kgm3 = 2600.0f,
-         .hardness = 0.8f,
-         .compaction_resistance = 1.0f,
-         .max_porosity = 0.05f,
-         .permeability = 0.000001f,
-         .thermal_conductivity = 2.0f,
-         .specific_heat = 800.0f,
-         .shear_strength = 150000.0f,
-         .fertility_base = 0.0f,
-         .pH_base = 7.5f,
-         .is_solid = true,
-         .is_liquid = false,
-         .is_opaque = true,
-         .erodibility = 0.02f}}};
+  static const std::unordered_map<MaterialType, MaterialProperties> catalogue = []() {
+    std::unordered_map<MaterialType, MaterialProperties> m;
+    MaterialProperties p;
+    p.name = "Air";
+    p.glyph = ' ';
+    p.fg_color = 7;
+    p.bg_color = 0;
+    p.density_kgm3 = 1.2f;
+    p.hardness = 0.0f;
+    p.compaction_resistance = 1.0f;
+    p.max_porosity = 1.0f;
+    p.permeability = 100.0f;
+    p.field_capacity = 1.0f;
+    p.wilting_point = 0.0f;
+    p.thermal_conductivity = 0.024f;
+    p.specific_heat = 1006.0f;
+    p.shear_strength = 0.0f;
+    p.fertility_base = 0.0f;
+    p.pH_base = 7.0f;
+    p.is_solid = false;
+    p.is_liquid = false;
+    p.is_opaque = false;
+    p.erodibility = 0.0f;
+    m.emplace(MaterialType::AIR, p);
+
+    p.name = "Fresh Water";
+    p.glyph = '~';
+    p.fg_color = 4;
+    p.bg_color = 0;
+    p.density_kgm3 = 1000.0f;
+    p.hardness = 0.0f;
+    p.compaction_resistance = 1.0f;
+    p.max_porosity = 1.0f;
+    p.permeability = 0.01f;
+    p.field_capacity = 1.0f;
+    p.wilting_point = 0.0f;
+    p.thermal_conductivity = 0.6f;
+    p.specific_heat = 4184.0f;
+    p.shear_strength = 0.0f;
+    p.fertility_base = 0.0f;
+    p.pH_base = 7.0f;
+    p.is_solid = false;
+    p.is_liquid = true;
+    p.is_opaque = false;
+    p.erodibility = 0.0f;
+    m.emplace(MaterialType::WATER_FRESH, p);
+
+    p.name = "Base Soil";
+    p.glyph = '.';
+    p.fg_color = 3;
+    p.bg_color = 0;
+    p.density_kgm3 = 1500.0f;
+    p.hardness = 0.1f;
+    p.compaction_resistance = 0.3f;
+    p.max_porosity = 0.4f;
+    p.permeability = 0.00001f;
+    p.field_capacity = 0.2f;
+    p.wilting_point = 0.08f;
+    p.thermal_conductivity = 0.8f;
+    p.specific_heat = 850.0f;
+    p.shear_strength = 40.0f;
+    p.fertility_base = 0.5f;
+    p.pH_base = 7.0f;
+    p.is_solid = true;
+    p.is_liquid = false;
+    p.is_opaque = true;
+    p.erodibility = 0.5f;
+    m.emplace(MaterialType::SOIL_BASE, p);
+
+    p.name = "Base Stone";
+    p.glyph = '.';
+    p.fg_color = 8;
+    p.bg_color = 0;
+    p.density_kgm3 = 2600.0f;
+    p.hardness = 0.8f;
+    p.compaction_resistance = 1.0f;
+    p.max_porosity = 0.05f;
+    p.permeability = 0.000001f;
+    p.field_capacity = 0.04f;
+    p.wilting_point = 0.02f;
+    p.thermal_conductivity = 2.0f;
+    p.specific_heat = 800.0f;
+    p.shear_strength = 150000.0f;
+    p.fertility_base = 0.0f;
+    p.pH_base = 7.5f;
+    p.is_solid = true;
+    p.is_liquid = false;
+    p.is_opaque = true;
+    p.erodibility = 0.02f;
+    m.emplace(MaterialType::STONE_BASE, p);
+
+    return m;
+  }();
   auto it = catalogue.find(type);
   if (it != catalogue.end()) {
     return it->second;

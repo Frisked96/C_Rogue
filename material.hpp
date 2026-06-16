@@ -24,6 +24,8 @@ struct MaterialProperties {
                       // rock)
   float permeability; // how fast water flows through saturated material, m/s
                       // per unit head
+  float field_capacity; // volume fraction at which drainage stops
+  float wilting_point;  // volume fraction below which plants cannot extract water
   float thermal_conductivity; // W/(m·K)
   float specific_heat;        // J/(kg·K)
   float shear_strength;       // kPa, for cave‑in / stability calculations

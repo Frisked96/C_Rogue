@@ -37,5 +37,6 @@ void MapGenerator::generate(Game_map &game_map, int seed) {
   }
 
   // Run the hydrology simulation
-  MapSimulator::run(game_map, seed);
+  MapSimulator simulator;
+  simulator.run(game_map, seed);
 }

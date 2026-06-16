@@ -11,6 +11,7 @@ SRCS = main.cpp \
        tile.cpp \
        material.cpp \
        map_gen/map_generator.cpp \
+       map_gen/climate_hydrology.cpp \
        map_gen/simulator.cpp \
        map_gen/visibility.cpp \
        Entity/entity_properties.cpp \
@@ -20,11 +21,17 @@ SRCS = main.cpp \
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
 TARGET = main.exe
+DIAG_TARGET = map_diag.exe
 
-all: $(TARGET)
+all: $(TARGET) $(DIAG_TARGET)
+
+diag: $(DIAG_TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
+
+$(DIAG_TARGET): map_diag.o $(filter-out main.o, $(OBJS))
+	$(CXX) $(CXXFLAGS) -o $(DIAG_TARGET) map_diag.o $(filter-out main.o, $(OBJS))
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -39,8 +46,9 @@ clean:
 	if exist map_gen\*.d del /q map_gen\*.d
 	if exist Entity\*.d del /q Entity\*.d
 	if exist $(TARGET) del /q $(TARGET)
+	if exist $(DIAG_TARGET) del /q $(DIAG_TARGET)
 
 format:
 	$(FORMATTER) -i $(SRCS) *.hpp Entity/*.hpp map_gen/*.hpp FastNoiseLite.h
 
-.PHONY: all clean format
+.PHONY: all diag clean format
