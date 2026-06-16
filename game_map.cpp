@@ -72,7 +72,7 @@ bool Game_map::can_plant(int x, int y, int z) const {
     if (!is_in_bounds(x, y, z)) return false;
     const Tile& tile = get_tile(x, y, z);
 
-    // Physical requirements (temperature & moisture)
+    // Physical requirements (temperature & liquid_volume)
     if (tile.state.temperature <= 278.0f) return false;
     if (tile.state.liquid_volume <= tile.wilting_point()) return false;
 

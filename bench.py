@@ -68,12 +68,12 @@ def main():
     
     print("-" * 40)
     print("WORLD STATISTICS:")
-    print(f"  Water Fresh Tiles:     {metrics.get('water_fresh_tiles', 'N/A')}")
+    print(f"  Pond/River Tiles:      {metrics.get('water_fresh_tiles', 'N/A')}")
     print(f"  'Water' Material Tiles: {metrics.get('tiles_with_water_in_name', 'N/A')}")
-    print(f"  Tiles with Moisture:    {metrics.get('tiles_with_moisture', 'N/A')}")
-    print(f"  Total World Moisture:   {float(metrics.get('total_moisture', 0)):.2f} units")
-    print(f"  Highest Water/Moisture: Z = {metrics.get('max_z_water_moisture', 'N/A')}")
-    print(f"  Deepest Water/Moisture: Z = {metrics.get('min_z_water_moisture', 'N/A')}")
+    print(f"  Tiles with Liquid:      {metrics.get('tiles_with_moisture', 'N/A')}")
+    print(f"  Total World Liquid:     {float(metrics.get('total_moisture', 0)):.2f} units")
+    print(f"  Highest Water Level:    Z = {metrics.get('max_z_water_moisture', 'N/A')}")
+    print(f"  Deepest Water Level:    Z = {metrics.get('min_z_water_moisture', 'N/A')}")
     print("="*40)
 
 if __name__ == "__main__":

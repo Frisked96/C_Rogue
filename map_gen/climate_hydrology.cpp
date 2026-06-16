@@ -345,7 +345,9 @@ std::vector<float> GroundwaterGrid::update(const std::vector<int>& ground_z, con
 // =========================================================================
 // Surface / soil routines
 // =========================================================================
-void add_surface_water(Game_map& map, int x, int y, int ground_z, float depth, const Params& p) {
+void add_surface_water(Game_map& map, int x, int y, int ground_z, float depth,
+                        const Params& p) {
+    (void)p;
     if (depth <= 0.0f) return;
     int depth_map = map.get_depth();
 
