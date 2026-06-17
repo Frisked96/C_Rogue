@@ -123,7 +123,7 @@ namespace hydro {
 // -----------------------------------------------------------------------
 struct Params {
   // --- Time stepping ---
-  int substeps_per_year = 140; // (120) ~3/day; design notes suggest >=120
+  int substeps_per_year = 140; //  ~3/day; design notes suggest >=120
 
   // --- Atmosphere / climate ---
   float sea_level_temp_K = 288.15f;   // 15 C baseline air temperature
