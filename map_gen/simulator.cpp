@@ -95,7 +95,8 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
   // --- 4. Surface water: D8 overland flow ---
   start = std::chrono::high_resolution_clock::now();
   float runoff = 0.0f;
-  hydro::overland_flow_step(game_map, ground_z_, params_, runoff);
+  hydro::overland_flow_step(game_map, ground_z_, params_, runoff,
+                             overland_bufs_);
   total_runoff_to_ocean_ += runoff;
   end = std::chrono::high_resolution_clock::now();
   step_timings_["Surface"] +=

@@ -52,6 +52,7 @@ private:
 
   hydro::ClimateSystem climate_;
   hydro::GroundwaterGrid groundwater_;
+  hydro::OverlandFlowBuffers overland_bufs_;
 
   int width_ = 0, height_ = 0, depth_ = 0;
   bool initialized_ = false;

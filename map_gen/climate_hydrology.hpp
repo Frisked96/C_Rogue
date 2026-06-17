@@ -123,7 +123,7 @@ namespace hydro {
 // -----------------------------------------------------------------------
 struct Params {
   // --- Time stepping ---
-  int substeps_per_year = 160; // (120) ~3/day; design notes suggest >=120
+  int substeps_per_year = 140; // (120) ~3/day; design notes suggest >=120
 
   // --- Atmosphere / climate ---
   float sea_level_temp_K = 288.15f;   // 15 C baseline air temperature
@@ -131,7 +131,7 @@ struct Params {
   float lapse_rate_K_per_tile =
       0.45f; // "gamified" lapse rate (K lost per metre of elevation)
   float orographic_gain =
-      4.0f;               // extra cooling per unit of upslope wind component
+      4.5f;               // extra cooling per unit of upslope wind component
   float qsat_ref = 0.05f; // saturation vapor "capacity" at sea_level_temp_K
   float qsat_k =
       0.07f; // exponential rate, per Kelvin (Clausius-Clapeyron-like)
@@ -234,7 +234,7 @@ public:
   // Orographic + convective precipitation. Consumes supersaturated vapor
   // (based on local temperature and orographic lift) and returns
   // precipitation depth (metres) per column for this substep.
-  std::vector<float> step_precipitation(NoiseGen &noise, float day_index);
+  const std::vector<float>& step_precipitation(NoiseGen &noise, float day_index);
 
   // Evapotranspiration step adds water back into the local vapor field.
   void add_vapor(int x, int y, float amount);
@@ -257,6 +257,10 @@ private:
   int w_ = 0, h_ = 0;
   Params params_;
   std::vector<ClimateCell> cells_;
+  
+  // Persistent scratch buffers (avoids per-substep heap allocations)
+  std::vector<float> advect_delta_;
+  std::vector<float> precip_buf_;
 };
 
 // -----------------------------------------------------------------------
@@ -280,8 +284,8 @@ public:
   // volume wherever the table has risen above ground level (springs /
   // baseflow). Caller is expected to add the returned discharge to the
   // surface pond at (x, ground_z[x,y]+1).
-  std::vector<float> update(const std::vector<int> &ground_z,
-                            const Game_map &map);
+  const std::vector<float>& update(const std::vector<int> &ground_z,
+                                   const Game_map &map);
 
   float water_table(int x, int y) const { return table_[idx(x, y)]; }
 
@@ -299,6 +303,10 @@ private:
   int w_ = 0, h_ = 0;
   Params params_;
   std::vector<float> table_;
+  
+  // Persistent scratch buffers
+  std::vector<float> discharge_buf_;
+  std::vector<float> new_table_buf_;
 };
 
 // -----------------------------------------------------------------------
@@ -333,11 +341,19 @@ void capillary_rise_step(Game_map &map, const std::vector<int> &ground_z,
                          const std::vector<float> &soil_variation,
                          const Params &p);
 
+// Pre-allocated buffers for overland_flow_step to prevent per-call allocation.
+struct OverlandFlowBuffers {
+  std::vector<float> outflow;
+  std::vector<float> inflow;
+  std::vector<int> best_idx;
+};
+
 // Step 4: D8 (8-direction) steepest-descent overland flow for surface ponds.
 // Water flows toward the lowest neighbouring (ground + pond) elevation; flow
 // off the map edge is accumulated into `runoff_to_ocean` (informational).
 void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
-                        const Params &p, float &runoff_to_ocean);
+                        const Params &p, float &runoff_to_ocean,
+                        OverlandFlowBuffers& buffers);
 
 // Step 5: evapotranspiration. Surface tiles (and ponds) lose moisture
 // proportional to wind speed * vapor-pressure-deficit * surface wetness;
