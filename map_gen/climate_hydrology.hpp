@@ -234,8 +234,7 @@ public:
 
   // Orographic + convective precipitation. Consumes supersaturated vapor
   // and returns precipitation depth (metres) per column for this substep.
-  std::vector<float> step_precipitation(const std::vector<int> &ground_z,
-                                        NoiseGen &noise, float day_index);
+  std::vector<float> step_precipitation(NoiseGen& noise, float day_index);
 
   // Evapotranspiration step adds water back into the local vapor field.
   void add_vapor(int x, int y, float amount);

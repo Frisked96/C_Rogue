@@ -71,7 +71,7 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
   climate_.advect();
 
   std::vector<float> precip =
-      climate_.step_precipitation(ground_z_, noise_, day_index);
+      climate_.step_precipitation(noise_, day_index);
 
   auto end = std::chrono::high_resolution_clock::now();
   step_timings_["Atmosphere"] +=

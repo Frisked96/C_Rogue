@@ -128,7 +128,7 @@ void ClimateSystem::update_wind(const std::vector<int> &ground_z,
     // NoiseGen has mutable caching state so sharing across threads is a data
     // race.
     futures.push_back(std::async(
-        std::launch::async, [=, &ground_z, local_noise = noise]() mutable {
+        std::launch::async, [this, start_y, end_y, base_u, base_v, elev, local_noise = noise]() mutable {
           for (int y = start_y; y < end_y; ++y) {
             for (int x = 0; x < w_; ++x) {
               float nu = local_noise.fbm2D((float)x * 0.015f + 1000.0f,
@@ -205,7 +205,7 @@ void ClimateSystem::update_temperature(const std::vector<int> &ground_z,
     if (start_y >= h_)
       break;
 
-    futures.push_back(std::async(std::launch::async, [=, &ground_z]() {
+    futures.push_back(std::async(std::launch::async, [this, start_y, end_y, seasonal, &ground_z]() {
       for (int y = start_y; y < end_y; ++y) {
         for (int x = 0; x < w_; ++x) {
           ClimateCell &c = cells_[idx(x, y)];
@@ -286,9 +286,8 @@ void ClimateSystem::advect() {
     c.vapor = std::max(0.0f, c.vapor);
 }
 
-std::vector<float>
-ClimateSystem::step_precipitation(const std::vector<int> &ground_z,
-                                  NoiseGen &noise, float day_index) {
+std::vector<float> ClimateSystem::step_precipitation(NoiseGen &noise,
+                                                  float day_index) {
   std::vector<float> precip(cells_.size(), 0.0f);
 
   const int num_threads = thread_count();
@@ -302,9 +301,9 @@ ClimateSystem::step_precipitation(const std::vector<int> &ground_z,
     if (start_y >= h_)
       break;
 
-    futures.push_back(
-        std::async(std::launch::async, [=, &ground_z, &precip,
-                                        local_noise = noise]() mutable {
+    futures.push_back(std::async(
+        std::launch::async, [this, start_y, end_y, day_index, &precip,
+                             local_noise = noise]() mutable {
           for (int y = start_y; y < end_y; ++y) {
             for (int x = 0; x < w_; ++x) {
               ClimateCell &c = cells_[idx(x, y)];
