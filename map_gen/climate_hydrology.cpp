@@ -42,7 +42,7 @@ std::vector<int> compute_ground_heightmap(const Game_map &map) {
   int height = map.get_height();
   int depth = map.get_depth();
 
-  std::vector<int> ground_z((size_t)width * height, 0);
+  std::vector<int> ground_z((std::size_t)width * height, 0);
 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
@@ -54,7 +54,7 @@ std::vector<int> compute_ground_heightmap(const Game_map &map) {
           break;
         }
       }
-      ground_z[(size_t)y * width + x] = gz;
+      ground_z[(std::size_t)y * width + x] = gz;
     }
   }
   return ground_z;
@@ -63,11 +63,11 @@ std::vector<int> compute_ground_heightmap(const Game_map &map) {
 // -----------------------------------------------------------------------
 std::vector<float> compute_soil_variation(int width, int height,
                                           NoiseGen &noise, const Params &p) {
-  std::vector<float> variation((size_t)width * height, 1.0f);
+  std::vector<float> variation((std::size_t)width * height, 1.0f);
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       float n = noise.fbm2D(x * 0.15f + 500.0f, y * 0.15f + 500.0f, 3);
-      variation[(size_t)y * width + x] = 1.0f + p.soil_variation_amplitude * n;
+      variation[(std::size_t)y * width + x] = 1.0f + p.soil_variation_amplitude * n;
     }
   }
   return variation;
@@ -80,7 +80,7 @@ void ClimateSystem::init(int width, int height, const Params &params) {
   w_ = width;
   h_ = height;
   params_ = params;
-  cells_.assign((size_t)w_ * h_, ClimateCell{});
+  cells_.assign((std::size_t)w_ * h_, ClimateCell{});
 }
 
 void ClimateSystem::initialize(const std::vector<int> &ground_z,
@@ -357,7 +357,7 @@ void GroundwaterGrid::init(int width, int height, const Params &params) {
   w_ = width;
   h_ = height;
   params_ = params;
-  table_.assign((size_t)w_ * h_, 0.0f);
+  table_.assign((std::size_t)w_ * h_, 0.0f);
 }
 
 void GroundwaterGrid::initialize(const std::vector<int> &ground_z,
@@ -703,7 +703,7 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
   int depth_map = map.get_depth();
 
   auto pond_depth = [&](int x, int y) -> float {
-    int gz = ground_z[(size_t)y * width + x];
+    int gz = ground_z[(std::size_t)y * width + x];
     if (gz + 1 >= depth_map)
       return 0.0f;
     const Tile &t = map.get_tile(x, y, gz + 1);
@@ -712,8 +712,8 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
     return 0.0f;
   };
 
-  std::vector<float> outflow((size_t)width * height, 0.0f);
-  std::vector<float> inflow((size_t)width * height, 0.0f);
+  std::vector<float> outflow((std::size_t)width * height, 0.0f);
+  std::vector<float> inflow((std::size_t)width * height, 0.0f);
 
   static const int DX[8] = {1, -1, 0, 0, 1, 1, -1, -1};
   static const int DY[8] = {0, 0, 1, -1, 1, -1, 1, -1};
@@ -744,7 +744,7 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
           // surrounding sea/lowlands").
           n_wse = (float)ground_z[i] - 1.0f;
         } else {
-          n_wse = (float)ground_z[(size_t)ny * width + nx] + pond_depth(nx, ny);
+          n_wse = (float)ground_z[(std::size_t)ny * width + nx] + pond_depth(nx, ny);
         }
 
         float diff = (wse - n_wse) / DIST[d];

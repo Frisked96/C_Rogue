@@ -42,9 +42,8 @@
 #include <vector>
 
 // -----------------------------------------------------------------------
-// NoiseGen: thin wrapper around FastNoiseLite providing the same interface
-// previously offered by the standalone noise.hpp. FastNoiseLite.h must be
-// on the include path (it is already a project dependency).
+// NoiseGen: thin wrapper around FastNoiseLite providing a high-level
+// interface for fractal and simplex noise.
 //
 // Two internal FastNoiseLite instances are kept so that different octave
 // counts in successive fbm2D() calls don't require a full re-init each
@@ -124,7 +123,7 @@ namespace hydro {
 // -----------------------------------------------------------------------
 struct Params {
   // --- Time stepping ---
-  int substeps_per_year = 120; // ~3/day; design notes suggest >=120
+  int substeps_per_year = 160; // (120) ~3/day; design notes suggest >=120
 
   // --- Atmosphere / climate ---
   float sea_level_temp_K = 288.15f;   // 15 C baseline air temperature
@@ -137,7 +136,7 @@ struct Params {
   float qsat_k =
       0.07f; // exponential rate, per Kelvin (Clausius-Clapeyron-like)
   float rain_out_fraction =
-      0.35f; // fraction of supersaturation that rains out per substep
+      0.4f; // fraction of supersaturation that rains out per substep
   float ocean_humidity = 0.05f; // boundary inflow humidity (windward edges)
   float boundary_relax =
       0.25f; // how fast windward edge cells relax toward ocean_humidity
@@ -183,9 +182,9 @@ struct Params {
 float qsat(float temperature_K, const Params &p);
 
 // -----------------------------------------------------------------------
-// Heightmap: topmost "ground" tile per column (excludes AIR and
-// WATER_FRESH, i.e. the solid terrain surface a river could sit on top of).
-// Computed once per run() since terrain does not change during simulation.
+// Heightmap: topmost "ground" tile per column (excludes AIR,
+// i.e. the solid terrain surface a river could sit on top of).
+// Computed once per simulation since terrain does not change.
 // Returns a width*height vector indexed as [y*width + x].
 // -----------------------------------------------------------------------
 std::vector<int> compute_ground_heightmap(const Game_map &map);
@@ -233,8 +232,9 @@ public:
   void advect();
 
   // Orographic + convective precipitation. Consumes supersaturated vapor
-  // and returns precipitation depth (metres) per column for this substep.
-  std::vector<float> step_precipitation(NoiseGen& noise, float day_index);
+  // (based on local temperature and orographic lift) and returns
+  // precipitation depth (metres) per column for this substep.
+  std::vector<float> step_precipitation(NoiseGen &noise, float day_index);
 
   // Evapotranspiration step adds water back into the local vapor field.
   void add_vapor(int x, int y, float amount);
