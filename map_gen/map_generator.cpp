@@ -1,6 +1,7 @@
 #include "map_generator.hpp"
 #include "../material.hpp"
 #include "simulator.hpp"
+#include <cmath>
 
 void MapGenerator::generate(Game_map &game_map, int seed) {
   FastNoiseLite noise;
@@ -18,25 +19,35 @@ void MapGenerator::generate(Game_map &game_map, int seed) {
     for (int x = 0; x < width; x++) {
       float noise_val = noise.GetNoise((float)x, (float)y);
 
-      // Map noise to height
+      // Map noise to terrain height
       int terrain_height =
           static_cast<int>((noise_val + 1.0f) * 0.5f * (depth * 0.7f)) + 5;
 
       for (int z = 0; z < depth; z++) {
+        Tile t;
         if (z < terrain_height) {
           if (z > terrain_height - 3) {
-            game_map.set_tile(x, y, z, Tile(MaterialType::SOIL_BASE));
+            t = Tile(MaterialType::SOIL_BASE);
+            
+            // Give the topsoil some initial moisture so it isn't instantly 
+            // dust before the first rain falls. Field capacity is a safe start.
+            t.state.liquid_volume = t.field_capacity() * 0.5f; 
           } else {
-            game_map.set_tile(x, y, z, Tile(MaterialType::STONE_BASE));
+            t = Tile(MaterialType::STONE_BASE);
+            // Bedrock starts completely dry. The simulator's abstract 
+            // GroundwaterGrid will handle filling it conceptually over time.
           }
         } else {
-          game_map.set_tile(x, y, z, Tile(MaterialType::AIR));
+          t = Tile(MaterialType::AIR);
+          // NO PRE-FILLED OCEANS OR LAKES. The simulator will fill these 
+          // basins naturally via precipitation and overland flow.
         }
+        game_map.set_tile(x, y, z, t);
       }
     }
   }
 
-  // Run the hydrology simulation
+  // Run the hydrology simulation to generate rivers, lakes, and groundwater
   MapSimulator simulator;
   simulator.run(game_map, seed);
 }

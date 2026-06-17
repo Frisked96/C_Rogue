@@ -70,7 +70,8 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
   climate_.update_temperature(ground_z_, season_phase);
   climate_.advect();
 
-  std::vector<float> precip =
+  // Capture by const reference to avoid copying the internal buffer
+  const std::vector<float>& precip = 
       climate_.step_precipitation(noise_, day_index);
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -112,7 +113,8 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
   // --- 6. Groundwater: slow diffusion + baseflow to surface ---
   start = std::chrono::high_resolution_clock::now();
   if (substep % params_.groundwater_update_interval == 0) {
-    std::vector<float> discharge = groundwater_.update(ground_z_, game_map);
+    // Capture by const reference to avoid copying the internal buffer
+    const std::vector<float>& discharge = groundwater_.update(ground_z_, game_map);
     for (int y = 0; y < height_; ++y) {
       for (int x = 0; x < width_; ++x) {
         int i = y * width_ + x;
