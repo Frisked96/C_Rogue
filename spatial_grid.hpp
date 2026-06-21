@@ -6,14 +6,15 @@
 
 // Generic spatial hash map for a 3D grid world.
 // Maps (x,y,z) positions to lists of IDs. IDType must be an integer type.
-// Shared by Entity, Object, and any future system that needs spatial lookups.
 template <typename IDType = uint32_t> class SpatialGrid {
 private:
   std::unordered_map<uint64_t, std::vector<IDType>> grid_;
 
-  static uint64_t make_key(int x, int y, int z) {
-    return ((uint64_t)(uint32_t)x) | (((uint64_t)(uint32_t)y) << 20) |
-           (((uint64_t)(uint32_t)z) << 40);
+  // Safely packs 3D coordinates into a 64-bit key.
+  static constexpr uint64_t make_key(int x, int y, int z) noexcept {
+    return ((uint64_t)(uint32_t)x & 0x1FFFFF) |
+           (((uint64_t)(uint32_t)y & 0x1FFFFF) << 21) |
+           (((uint64_t)(uint32_t)z & 0x1FFFFF) << 42);
   }
 
 public:
@@ -25,9 +26,17 @@ public:
     auto it = grid_.find(make_key(x, y, z));
     if (it != grid_.end()) {
       auto &vec = it->second;
-      vec.erase(std::remove(vec.begin(), vec.end(), id), vec.end());
-      if (vec.empty())
+      
+      // O(1) removal via swap-and-pop (preserves order? No, but fast).
+      auto item_it = std::find(vec.begin(), vec.end(), id);
+      if (item_it != vec.end()) {
+        *item_it = std::move(vec.back());
+        vec.pop_back();
+      }
+
+      if (vec.empty()) {
         grid_.erase(it);
+      }
     }
   }
 
@@ -36,16 +45,16 @@ public:
     add(id, nx, ny, nz);
   }
 
-  const std::vector<IDType> &get_at(int x, int y, int z) const {
+  const std::vector<IDType> &get_at(int x, int y, int z) const noexcept {
     static const std::vector<IDType> empty;
     auto it = grid_.find(make_key(x, y, z));
     return (it != grid_.end()) ? it->second : empty;
   }
 
-  bool has_any(int x, int y, int z) const {
+  bool has_any(int x, int y, int z) const noexcept {
     auto it = grid_.find(make_key(x, y, z));
     return it != grid_.end() && !it->second.empty();
   }
 
-  void clear() { grid_.clear(); }
+  void clear() noexcept { grid_.clear(); }
 };
