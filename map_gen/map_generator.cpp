@@ -4,6 +4,11 @@
 #include <cmath>
 
 void MapGenerator::generate(Game_map &game_map, int seed) {
+  generate_terrain(game_map, seed);
+  simulate_hydrology(game_map, seed);
+}
+
+void MapGenerator::generate_terrain(Game_map &game_map, int seed) {
   FastNoiseLite noise;
   noise.SetSeed(seed);
   noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
@@ -46,7 +51,9 @@ void MapGenerator::generate(Game_map &game_map, int seed) {
       }
     }
   }
+}
 
+void MapGenerator::simulate_hydrology(Game_map &game_map, int seed) {
   // Run the hydrology simulation to generate rivers, lakes, and groundwater
   MapSimulator simulator;
   simulator.run(game_map, seed);
