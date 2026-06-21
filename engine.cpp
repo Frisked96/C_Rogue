@@ -139,14 +139,12 @@ void Engine::handle_input() {
       int nz = player->state.z + dz;
 
       // Surface-following logic
-      if (entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map)) {
+      if (entityManager.is_blocked(nx, ny, nz, *map)) {
         // Attempt to climb (up to 2m)
-        if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz + 1,
-                                                         *map)) {
+        if (!entityManager.is_blocked(nx, ny, nz + 1, *map)) {
           nz++;
           last_msg = "You climb up.";
-        } else if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz + 2,
-                                                                *map)) {
+        } else if (!entityManager.is_blocked(nx, ny, nz + 2, *map)) {
           nz += 2;
           last_msg = "You scramble up the ridge.";
         } else {
@@ -157,9 +155,8 @@ void Engine::handle_input() {
         // Gravity / Descending logic
         int start_z = nz;
         while (nz > 0 &&
-               !entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map) &&
-               !entityManager.get_spatial_grid().is_blocked(nx, ny, nz - 1,
-                                                            *map)) {
+               !entityManager.is_blocked(nx, ny, nz, *map) &&
+               !entityManager.is_blocked(nx, ny, nz - 1, *map)) {
 
           // Buoyancy: Stop falling if we hit deep enough water
           const Tile &current_tile = map->get_tile(nx, ny, nz);
@@ -186,7 +183,7 @@ void Engine::handle_input() {
         }
       }
 
-      if (!entityManager.get_spatial_grid().is_blocked(nx, ny, nz, *map)) {
+      if (!entityManager.is_blocked(nx, ny, nz, *map)) {
         entityManager.get_spatial_grid().move(player_id, player->state.x,
                                               player->state.y, player->state.z,
                                               nx, ny, nz);

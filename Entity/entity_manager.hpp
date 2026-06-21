@@ -1,9 +1,11 @@
 #pragma once
 #include "entity.hpp"
-#include "spatial_grid.hpp"
+#include "../spatial_grid.hpp"
 #include <deque>
 #include <unordered_map>
 #include <vector>
+
+class Game_map;
 
 class EntityManager {
 private:
@@ -15,7 +17,7 @@ private:
 
   std::vector<Slot> slots;
   std::deque<uint32_t> free_slots;
-  SpatialGrid spatial_grid;
+  SpatialGrid<EntityID> spatial_grid;
 
   EntityID make_id(uint32_t index, uint32_t generation) const {
     return (generation << 16) | (index & 0xFFFF);
@@ -37,6 +39,11 @@ public:
   // For renderer/iteration
   std::vector<Entity *> get_all_active();
 
-  SpatialGrid &get_spatial_grid() { return spatial_grid; }
-  const SpatialGrid &get_spatial_grid() const { return spatial_grid; }
+  SpatialGrid<EntityID> &get_spatial_grid() { return spatial_grid; }
+  const SpatialGrid<EntityID> &get_spatial_grid() const {
+    return spatial_grid;
+  }
+
+  // Movement check — combines spatial grid + map solidity
+  bool is_blocked(int x, int y, int z, const Game_map &map) const;
 };

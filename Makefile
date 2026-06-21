@@ -15,8 +15,7 @@ SRCS = main.cpp \
        map_gen/simulator.cpp \
        map_gen/visibility.cpp \
        Entity/entity_properties.cpp \
-       Entity/entity_manager.cpp \
-       Entity/spatial_grid.cpp
+       Entity/entity_manager.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)

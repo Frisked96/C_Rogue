@@ -1,4 +1,5 @@
 #include "entity_manager.hpp"
+#include "../game_map.hpp"
 #include <algorithm>
 
 EntityManager::EntityManager() { slots.reserve(1024); }
@@ -129,4 +130,21 @@ std::vector<Entity *> EntityManager::get_all_active() {
       active.push_back(&slot.entity);
   }
   return active;
+}
+
+bool EntityManager::is_blocked(int x, int y, int z,
+                                const Game_map &map) const {
+  if (!map.is_in_bounds(x, y, z))
+    return true;
+
+  // Check map solidity
+  if (map.get_tile(x, y, z).mat().is_solid)
+    return true;
+
+  // Check for other entities
+  const auto &entities = spatial_grid.get_at(x, y, z);
+  if (!entities.empty())
+    return true; // Simple: any entity blocks
+
+  return false;
 }
