@@ -31,6 +31,7 @@ void InputHandler::init_key_bindings() {
   key_bindings['='] = Action::ZOOM_IN;  // Alternative zoom in
   key_bindings['<'] = Action::MOVE_LEVEL_UP;
   key_bindings['>'] = Action::MOVE_LEVEL_DOWN;
+  key_bindings['`'] = Action::TOGGLE_DEBUG; // Toggle debug renderer
 }
 
 Action InputHandler::process_input(char input) const {
@@ -114,6 +115,8 @@ std::string InputHandler::action_to_string(Action action) {
     return "ZOOM_IN";
   case Action::ZOOM_OUT:
     return "ZOOM_OUT";
+  case Action::TOGGLE_DEBUG:
+    return "TOGGLE_DEBUG";
   case Action::NONE:
     return "NONE";
   default:

@@ -20,6 +20,11 @@ private:
   int height;
   int width;
   vector<vector<Cell>> view_grid;
+  bool debug_mode = false;
+
+  void render_map_debug(const Game_map &map, int z, int cam_x, int cam_y);
+  void draw_ui_debug(const Entity *player, const Game_map &map,
+                     const std::string &msg);
 
 public:
   Terminal_renderer(int w, int h);
@@ -32,4 +37,6 @@ public:
                        int cam_x, int cam_y);
   void draw_ui(const Entity *player, const Game_map &map,
                const std::string &msg);
+  void toggle_debug_mode();
+  bool is_debug_mode() const;
 };

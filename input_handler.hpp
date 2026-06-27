@@ -19,7 +19,8 @@ enum class Action {
   HELP,
   RESTART, // Added for variety
   ZOOM_IN,
-  ZOOM_OUT
+  ZOOM_OUT,
+  TOGGLE_DEBUG
 };
 
 class InputHandler {

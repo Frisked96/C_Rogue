@@ -127,6 +127,10 @@ void Engine::handle_input() {
   case Action::QUIT:
     is_running = false;
     break;
+  case Action::TOGGLE_DEBUG:
+    renderer->toggle_debug_mode();
+    last_msg = renderer->is_debug_mode() ? "[DEBUG MODE ON]" : "[DEBUG MODE OFF]";
+    break;
   default:
     break;
   }
