@@ -26,7 +26,7 @@ constexpr int MAP_HEIGHT = 100;
 constexpr int MAP_DEPTH = 150;
 
 constexpr int SEED = 12345;
-constexpr int SLEEP_MS = 50;
+constexpr int SLEEP_MS = 0;
 constexpr int SPAWN_INTERVAL = 10; // Spawn trees every N years
 constexpr int MAX_SPAWN_YEAR = 50; // Stop naturally spawning trees after this year
 
@@ -42,10 +42,13 @@ struct TestTree {
     int age = 0;
     float canopy = 1.0f;
     float canopy_density = 0.1f;
+    float water_damage = 0.0f;
     int max_age = 0;
 };
 
 std::unordered_map<ObjectUID, TestTree> custom_trees;
+int global_trees_died_water = 0;
+int global_trees_died_shade = 0;
 
 // Utility function to print a small top-down slice of the map
 void print_map_slice(const Game_map& map, ObjectManager& obj_mgr, int start_x, int start_y, int w, int h) {
@@ -76,7 +79,7 @@ void print_map_slice(const Game_map& map, ObjectManager& obj_mgr, int start_x, i
                             
                             // Custom test logic for growth stages
                             if (proto.id == 1 && custom_trees.count(uid)) {
-                                if (custom_trees[uid].age < 15 || custom_trees[uid].canopy <= 2.0f) {
+                                if (custom_trees[uid].age < 15 || custom_trees[uid].canopy < 1.9f) {
                                     glyph = 't'; // Young tree
                                 } else {
                                     glyph = 'T'; // Mature tree
@@ -108,7 +111,7 @@ void print_map_slice(const Game_map& map, ObjectManager& obj_mgr, int start_x, i
             }
             
             if (bg != 0) {
-                out += "\033[38;5;" + std::to_string(fg) + ";" + std::to_string(bg) + "m" + glyph;
+                out += "\033[38;5;" + std::to_string(fg) + ";" + std::to_string(bg) + "m" + glyph + "\033[0m"; // Reset to stop bleeding
             } else {
                 out += "\033[38;5;" + std::to_string(fg) + "m" + glyph;
             }
@@ -159,8 +162,9 @@ void test_populate(Game_map& map, ObjectManager& obj_mgr, int year, const std::v
     }
 }
 
-void test_tick_trees(Game_map& map, ObjectManager& obj_mgr, int& total_trees_died) {
-    std::vector<ObjectUID> to_kill;
+void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
+    std::vector<ObjectUID> to_kill_water;
+    std::vector<ObjectUID> to_kill_shade;
     
     // Reset all flow blockage (since trees can die, we recalculate it)
     for (int y = 0; y < map.get_height(); ++y) {
@@ -179,10 +183,24 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr, int& total_trees_die
         // Density increases with age, max 1.0
         t.canopy_density = std::min(1.0f, t.age * 0.01f);
         
-        // 1. Drown Check (if tree trunk is in > 0.15m of water)
+        // 1. Water Erosion & Drowning
         const Tile& trunk_tile = map.get_tile(t.x, t.y, t.z);
-        if (trunk_tile.state.liquid_volume > 0.15f) {
-            to_kill.push_back(uid);
+        float water_level = trunk_tile.state.liquid_volume;
+        
+        if (water_level > 0.02f) {
+            // Rammed by flowing water! Accumulate damage. 
+            t.water_damage += water_level;
+        } else {
+            // Heals slowly if not rammed by water
+            t.water_damage = std::max(0.0f, t.water_damage - 0.05f);
+        }
+        
+        // Mature, denser trees can withstand more erosion before falling
+        float max_water_damage = 1.0f + t.canopy_density * 9.0f; // 1.0 to 10.0 damage threshold
+        
+        // 1.5m of sudden water is an instant flood kill. Otherwise, kills if erosion exceeds threshold
+        if (t.water_damage > max_water_damage || water_level > 1.5f) {
+            to_kill_water.push_back(uid);
             continue; // Uprooted/drowned by river!
         }
         
@@ -230,14 +248,19 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr, int& total_trees_die
         
         // Requires significant shade from MULTIPLE trees to die (e.g. > 2.5 shade total)
         if (total_shade > 2.5f) {
-            to_kill.push_back(uid);
+            to_kill_shade.push_back(uid);
         }
     }
     
-    for (auto uid : to_kill) {
+    for (auto uid : to_kill_water) {
         obj_mgr.kill(uid);
         custom_trees.erase(uid);
-        total_trees_died++;
+        global_trees_died_water++;
+    }
+    for (auto uid : to_kill_shade) {
+        obj_mgr.kill(uid);
+        custom_trees.erase(uid);
+        global_trees_died_shade++;
     }
 }
 // ------------------------------
@@ -296,7 +319,6 @@ int main() {
     simulator.initialize(map, SEED);
     
     int year = 0;
-    int total_trees_died = 0;
     int years_rained = 0;
     float prev_year_rain = 0.0f;
     std::cout << "Starting simulation loop. Press any key to stop.\n";
@@ -325,7 +347,7 @@ int main() {
         obj_mgr.tick(&map);
         
         // Custom test aging & canopy logic
-        test_tick_trees(map, obj_mgr, total_trees_died);
+        test_tick_trees(map, obj_mgr);
         
         // Custom test spawning logic
         test_populate(map, obj_mgr, year, simulator.get_ground_z());
@@ -363,7 +385,7 @@ int main() {
         std::cout << "\033[1;36m=== Live Simulation: Year " << year << " ===\033[0m\n";
         std::cout << "Total Water Tiles: " << water_tiles << "\n";
         std::cout << "Avg Soil Moisture: " << (soil_tiles > 0 ? total_moisture / soil_tiles : 0.0f) << "\n";
-        std::cout << "Total Trees (Living): " << active_trees << " | Total Trees Died: " << total_trees_died << "\n";
+        std::cout << "Total Trees (Living): " << active_trees << " | Died (Erosion): " << global_trees_died_water << " | Died (Shade): " << global_trees_died_shade << "\n";
         std::cout << "Rain This Year: " << this_year_rain << " | Rain Last Year: " << prev_year_rain << " | Total Years Rained: " << years_rained << "\n";
         std::cout << "\n\033[1;33mMap Slice (" << VIEW_WIDTH << "x" << VIEW_HEIGHT << " at " << VIEW_START_X << "," << VIEW_START_Y << "):\033[0m\n";
         
