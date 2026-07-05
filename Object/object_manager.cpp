@@ -1,6 +1,7 @@
 #include "object_manager.hpp"
 #include <algorithm>
 #include <cmath>
+#include "../game_map.hpp"
 
 ObjectManager::ObjectManager(ObjectPrototypeDB& db, EventBus& bus)
     : proto_db_(db), event_bus_(bus) {
@@ -46,6 +47,13 @@ ObjectUID ObjectManager::spawn(uint16_t prototype_id, int x, int y, int z) {
         obj.life.reset();
     }
 
+    // Allocate VegetationState for vegetation-behavior objects
+    if (proto.behavior == ObjectBehavior::VEGETATION) {
+        obj.vegetation = std::make_unique<VegetationState>();
+    } else {
+        obj.vegetation.reset();
+    }
+
     spatial_grid_.add(obj.uid, x, y, z);
 
     event_bus_.announce(EventType::OBJECT_SPAWNED,
@@ -67,6 +75,7 @@ void ObjectManager::kill(ObjectUID uid) {
 
     slot.obj.active = false;
     slot.obj.life.reset();
+    slot.obj.vegetation.reset();
     slot.obj.inventory.clear();
     slot.occupied = false;
     free_slots_.push_back(index);
@@ -105,7 +114,7 @@ void ObjectManager::move(ObjectUID uid, int nx, int ny, int nz) {
     event_bus_.announce(EventType::OBJECT_MOVED, {uid, 0, 0.0f});
 }
 
-void ObjectManager::tick() {
+void ObjectManager::tick(Game_map* map) {
     turn_counter_++;
 
     bool do_medium = (turn_counter_ % 10 == 0);
@@ -130,6 +139,10 @@ void ObjectManager::tick() {
         // Low frequency: every 100 turns for everything (decay, growth)
         if (do_low) {
             tick_low(obj, proto);
+            // Vegetation update: water absorption from soil, growth, drought
+            if (proto.behavior == ObjectBehavior::VEGETATION && obj.vegetation && map) {
+                tick_vegetation(obj, proto, map);
+            }
         }
     }
 
@@ -180,14 +193,86 @@ void ObjectManager::tick_medium(ObjectInstance& obj, const ObjectPrototype& /*pr
 }
 
 void ObjectManager::tick_low(ObjectInstance& obj, const ObjectPrototype& proto) {
-    // Low-frequency: decay for non-living objects, vegetation growth
-    if (!proto.is_living && obj.health > 0.0f) {
+    // Low-frequency: decay for non-living, non-tree objects
+    // Trees have their own tick_tree logic for health management.
+    if (!proto.is_living && proto.behavior == ObjectBehavior::INERT && obj.health > 0.0f) {
         // Slow natural decay for items/structures
         float old_health = obj.health;
         obj.health = std::max(0.0f, obj.health - 0.1f);
         if (obj.health != old_health) {
             event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
         }
+    }
+}
+
+void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& /*proto*/, Game_map* map) {
+    if (!obj.vegetation || !map) return;
+
+    // The tree sits at (x, y, z). The soil voxel is directly below at (x, y, z-1).
+    int soil_x = obj.x;
+    int soil_y = obj.y;
+    int soil_z = obj.z - 1;
+
+    if (!map->is_in_bounds(soil_x, soil_y, soil_z)) return;
+
+    const Tile& soil_tile = map->get_tile(soil_x, soil_y, soil_z);
+
+    // Only absorb water from soil-like materials
+    if (soil_tile.material != MaterialType::SOIL_BASE) {
+        // No soil beneath -- drought damage
+        obj.vegetation->moisture = std::max(0.0f, obj.vegetation->moisture - 0.05f);
+        if (obj.vegetation->moisture <= 0.0f) {
+            float old_health = obj.health;
+            obj.health = std::max(0.0f, obj.health - 2.0f);
+            if (obj.health != old_health) {
+                event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            }
+        }
+        return;
+    }
+
+    float soil_water = soil_tile.state.liquid_volume;
+    float wilting = soil_tile.wilting_point();
+
+    if (soil_water > wilting) {
+        // Absorb water from the soil voxel
+        float uptake = std::min(0.02f, soil_water - wilting);
+
+        // Mutate the soil tile's water (const_cast pattern used elsewhere in the
+        // codebase for in-place numeric edits on tiles, see climate_hydrology.cpp)
+        Tile& mutable_soil = const_cast<Tile&>(map->get_tile(soil_x, soil_y, soil_z));
+        mutable_soil.state.liquid_volume -= uptake;
+
+        // Increase tree hydration
+        obj.vegetation->moisture = std::min(1.0f, obj.vegetation->moisture + uptake * 5.0f);
+
+        // Growth: advance if well-hydrated
+        if (obj.vegetation->moisture > 0.3f && obj.vegetation->growth < 1.0f) {
+            obj.vegetation->growth = std::min(1.0f, obj.vegetation->growth + 0.005f);
+        }
+
+        // Health regeneration when hydrated
+        const auto& tree_proto = proto_db_.get(obj.prototype_id);
+        if (obj.vegetation->moisture > 0.2f && obj.health < tree_proto.max_health) {
+            obj.health = std::min(tree_proto.max_health, obj.health + 0.5f);
+        }
+    } else {
+        // Soil too dry -- tree loses hydration
+        obj.vegetation->moisture = std::max(0.0f, obj.vegetation->moisture - 0.03f);
+
+        // Drought damage when completely dehydrated
+        if (obj.vegetation->moisture <= 0.0f) {
+            float old_health = obj.health;
+            obj.health = std::max(0.0f, obj.health - 1.5f);
+            if (obj.health != old_health) {
+                event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            }
+        }
+    }
+
+    // Fruit cooldown
+    if (obj.vegetation->fruit_cooldown > 0) {
+        obj.vegetation->fruit_cooldown--;
     }
 }
 

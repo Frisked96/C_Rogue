@@ -1,6 +1,6 @@
 #pragma once
-#include "entity.hpp"
 #include "../spatial_grid.hpp"
+#include "entity.hpp"
 #include <deque>
 #include <unordered_map>
 #include <vector>
@@ -40,9 +40,7 @@ public:
   std::vector<Entity *> get_all_active();
 
   SpatialGrid<EntityID> &get_spatial_grid() { return spatial_grid; }
-  const SpatialGrid<EntityID> &get_spatial_grid() const {
-    return spatial_grid;
-  }
+  const SpatialGrid<EntityID> &get_spatial_grid() const { return spatial_grid; }
 
   // Movement check — combines spatial grid + map solidity
   bool is_blocked(int x, int y, int z, const Game_map &map) const;

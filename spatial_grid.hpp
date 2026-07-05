@@ -26,7 +26,7 @@ public:
     auto it = grid_.find(make_key(x, y, z));
     if (it != grid_.end()) {
       auto &vec = it->second;
-      
+
       // O(1) removal via swap-and-pop (preserves order? No, but fast).
       auto item_it = std::find(vec.begin(), vec.end(), id);
       if (item_it != vec.end()) {

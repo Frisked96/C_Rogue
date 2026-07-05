@@ -129,7 +129,8 @@ void Engine::handle_input() {
     break;
   case Action::TOGGLE_DEBUG:
     renderer->toggle_debug_mode();
-    last_msg = renderer->is_debug_mode() ? "[DEBUG MODE ON]" : "[DEBUG MODE OFF]";
+    last_msg =
+        renderer->is_debug_mode() ? "[DEBUG MODE ON]" : "[DEBUG MODE OFF]";
     break;
   default:
     break;
@@ -158,8 +159,7 @@ void Engine::handle_input() {
       } else {
         // Gravity / Descending logic
         int start_z = nz;
-        while (nz > 0 &&
-               !entityManager.is_blocked(nx, ny, nz, *map) &&
+        while (nz > 0 && !entityManager.is_blocked(nx, ny, nz, *map) &&
                !entityManager.is_blocked(nx, ny, nz - 1, *map)) {
 
           // Buoyancy: Stop falling if we hit deep enough water

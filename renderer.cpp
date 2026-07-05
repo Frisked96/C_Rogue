@@ -63,7 +63,10 @@ void set_tile_bg(vector<vector<Terminal_renderer::Cell>> &grid, int x, int y,
 
 void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x,
                                    int cam_y) {
-  if (debug_mode) { render_map_debug(map, z, cam_x, cam_y); return; }
+  if (debug_mode) {
+    render_map_debug(map, z, cam_x, cam_y);
+    return;
+  }
   int start_x = cam_x - width / 2;
   int start_y = cam_y - height / 2;
 
@@ -183,8 +186,8 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x,
               }
             }
             if (is_shoreline) {
-              glyph = ',';  // Shoreline marker — small, unobtrusive
-              color = 45;   // Cyan/Teal for coastal feel
+              glyph = ',';   // Shoreline marker — small, unobtrusive
+              color = 45;    // Cyan/Teal for coastal feel
               bg_color = 24; // Keep the water background
             }
           }
@@ -262,7 +265,10 @@ void Terminal_renderer::render_entities(EntityManager &entityManager,
 
 void Terminal_renderer::draw_ui(const Entity *player, const Game_map &map,
                                 const std::string &msg) {
-  if (debug_mode) { draw_ui_debug(player, map, msg); return; }
+  if (debug_mode) {
+    draw_ui_debug(player, map, msg);
+    return;
+  }
   // Print stats/help (pad with spaces to overwrite old text)
   if (player) {
     int px = player->state.x;
@@ -351,7 +357,8 @@ void Terminal_renderer::render_map_debug(const Game_map &map, int z, int cam_x,
       if (map.is_in_bounds(mx, my, z)) {
         for (int wz = z; wz >= 0; --wz) {
           const Tile &zt = map.get_tile(mx, my, wz);
-          if (zt.material != MaterialType::AIR) break; // hit solid, stop
+          if (zt.material != MaterialType::AIR)
+            break; // hit solid, stop
           if (zt.state.liquid_volume > 0.0f) {
             water_in_column = true;
             break;
@@ -426,9 +433,9 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
     const Tile &t = map.get_tile(px, py, pz);
     const auto &m = t.mat();
     std::cout << "\033[36mINSIDE [" << pz << "]: \033[37m" << m.name
-              << " | glyph:'" << m.glyph << "' solid:"
-              << (m.is_solid ? "Y" : "N") << " opaque:"
-              << (m.is_opaque ? "Y" : "N") << "    \n";
+              << " | glyph:'" << m.glyph
+              << "' solid:" << (m.is_solid ? "Y" : "N")
+              << " opaque:" << (m.is_opaque ? "Y" : "N") << "    \n";
     std::cout << "\033[36m  Water: \033[37m" << ff(t.state.liquid_volume)
               << " \033[36mIce: \033[37m" << ff(t.state.frozen_volume)
               << " \033[36mTemp: \033[37m" << ff(t.state.temperature)
@@ -446,9 +453,9 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
     const Tile &t = map.get_tile(px, py, pz - 1);
     const auto &m = t.mat();
     std::cout << "\033[36mON [" << (pz - 1) << "]: \033[37m" << m.name
-              << " | glyph:'" << m.glyph << "' solid:"
-              << (m.is_solid ? "Y" : "N") << " opaque:"
-              << (m.is_opaque ? "Y" : "N") << "    \n";
+              << " | glyph:'" << m.glyph
+              << "' solid:" << (m.is_solid ? "Y" : "N")
+              << " opaque:" << (m.is_opaque ? "Y" : "N") << "    \n";
     std::cout << "\033[36m  Water: \033[37m" << ff(t.state.liquid_volume)
               << " \033[36mIce: \033[37m" << ff(t.state.frozen_volume)
               << " \033[36mTemp: \033[37m" << ff(t.state.temperature)
@@ -477,9 +484,11 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
       bool found = false;
       // Scan from pz downward through air to find water
       for (int sz = pz; sz >= 0; --sz) {
-        if (!map.is_in_bounds(nx, ny, sz)) break;
+        if (!map.is_in_bounds(nx, ny, sz))
+          break;
         const Tile &nt = map.get_tile(nx, ny, sz);
-        if (nt.material != MaterialType::AIR) break; // hit solid, stop
+        if (nt.material != MaterialType::AIR)
+          break; // hit solid, stop
         if (nt.state.liquid_volume > 0.0f) {
           water_dist[d] = step;
           water_z[d] = sz;
@@ -487,7 +496,8 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
           break;
         }
       }
-      if (found) break;
+      if (found)
+        break;
     }
   }
 
@@ -495,9 +505,11 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
   bool in_water = false;
   int player_water_z = -1;
   for (int sz = pz; sz >= 0; --sz) {
-    if (!map.is_in_bounds(px, py, sz)) break;
+    if (!map.is_in_bounds(px, py, sz))
+      break;
     const Tile &pt = map.get_tile(px, py, sz);
-    if (pt.material != MaterialType::AIR) break;
+    if (pt.material != MaterialType::AIR)
+      break;
     if (pt.state.liquid_volume > 0.0f) {
       in_water = true;
       player_water_z = sz;
@@ -528,8 +540,7 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
       nearest = d;
     }
   }
-  std::cout << "  Nearest: "
-            << (nearest >= 0 ? dir_names[nearest] : "NONE")
+  std::cout << "  Nearest: " << (nearest >= 0 ? dir_names[nearest] : "NONE")
             << "\033[0m    \n";
 
   // --- Log ---
@@ -537,6 +548,7 @@ void Terminal_renderer::draw_ui_debug(const Entity *player, const Game_map &map,
             << "\033[0m                                          \n";
 
   // --- Separator ---
-  std::cout << "\033[0;32m[DEBUG]------------------------------------------------------"
+  std::cout << "\033[0;32m[DEBUG]----------------------------------------------"
+               "--------"
                "\033[0m    \n";
 }

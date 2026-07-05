@@ -6,6 +6,8 @@
 #include <deque>
 #include <vector>
 
+class Game_map;
+
 // ObjectManager: Owns all ObjectInstances, manages their lifecycle,
 // and runs tiered tick updates. Uses EventBus for subscribe/announce.
 class ObjectManager {
@@ -37,6 +39,7 @@ private:
     void tick_high(ObjectInstance& obj, const ObjectPrototype& proto);
     void tick_medium(ObjectInstance& obj, const ObjectPrototype& proto);
     void tick_low(ObjectInstance& obj, const ObjectPrototype& proto);
+    void tick_vegetation(ObjectInstance& obj, const ObjectPrototype& proto, Game_map* map);
 
 public:
     ObjectManager(ObjectPrototypeDB& db, EventBus& bus);
@@ -56,7 +59,7 @@ public:
 
     // Run one game turn. Advances turn_counter and ticks objects
     // at their appropriate frequencies.
-    void tick();
+    void tick(Game_map* map = nullptr);
 
     // Get all active objects (for rendering/iteration).
     std::vector<ObjectInstance*> get_all_active();
@@ -64,4 +67,5 @@ public:
     // Accessors
     const SpatialGrid<ObjectUID>& spatial() const { return spatial_grid_; }
     uint64_t current_turn() const { return turn_counter_; }
+    const ObjectPrototypeDB& proto_db() const { return proto_db_; }
 };

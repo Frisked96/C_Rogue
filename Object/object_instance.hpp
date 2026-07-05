@@ -8,6 +8,12 @@
 using ObjectUID = uint32_t;
 constexpr ObjectUID INVALID_OBJECT_UID = 0;
 
+struct VegetationState {
+    float growth = 0.1f;         // 0.0 (seedling) to 1.0 (fully grown)
+    float moisture = 0.5f;       // 0.0 (dried out) to 1.0 (fully saturated)
+    int fruit_cooldown = 0;      // turns until it can produce fruit/seeds
+};
+
 // ObjectInstance: The live, mutable state in the world.
 // Analogous to TileState for voxels -- only stores what changes.
 struct ObjectInstance {
@@ -24,6 +30,10 @@ struct ObjectInstance {
     // Living State (Sparse Pointer)
     // Only allocated if prototype->is_living is true.
     std::unique_ptr<LifeState> life;
+
+    // Vegetation State (Sparse Pointer)
+    // Only allocated if prototype->behavior == ObjectBehavior::VEGETATION.
+    std::unique_ptr<VegetationState> vegetation;
 
     // Simple inventory: UIDs of contained objects
     // Only used if prototype->is_container is true.

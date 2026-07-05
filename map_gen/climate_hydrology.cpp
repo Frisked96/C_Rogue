@@ -37,9 +37,8 @@ public:
           std::function<void()> task;
           {
             std::unique_lock<std::mutex> lock(this->queue_mutex);
-            this->condition.wait(lock, [this] {
-              return this->stop || !this->tasks.empty();
-            });
+            this->condition.wait(
+                lock, [this] { return this->stop || !this->tasks.empty(); });
             if (this->stop && this->tasks.empty())
               return;
             task = std::move(this->tasks.front());
@@ -69,9 +68,8 @@ public:
 
   void wait() {
     std::unique_lock<std::mutex> lock(queue_mutex);
-    wait_condition.wait(lock, [this] {
-      return tasks.empty() && active_tasks == 0;
-    });
+    wait_condition.wait(lock,
+                        [this] { return tasks.empty() && active_tasks == 0; });
   }
 
   ~ThreadPool() {
@@ -99,7 +97,8 @@ inline ThreadPool &get_pool() {
   return pool;
 }
 
-// Helper for 2D grid parallelization. Passes thread_id, start_y, end_y to lambda.
+// Helper for 2D grid parallelization. Passes thread_id, start_y, end_y to
+// lambda.
 template <typename Func> void parallel_for_2d(int height, Func f) {
   ThreadPool &pool = get_pool();
   int num_threads = thread_count();
@@ -159,7 +158,8 @@ std::vector<float> compute_soil_variation(int width, int height,
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       float n = noise.fbm2D(x * 0.15f + 500.0f, y * 0.15f + 500.0f, 3);
-      variation[(std::size_t)y * width + x] = 1.0f + p.soil_variation_amplitude * n;
+      variation[(std::size_t)y * width + x] =
+          1.0f + p.soil_variation_amplitude * n;
     }
   }
   return variation;
@@ -206,60 +206,61 @@ void ClimateSystem::update_wind(const std::vector<int> &ground_z,
     return (float)ground_z[idx(x, y)];
   };
 
-  parallel_for_2d(h_, [this, base_u, base_v, elev, noise](int, int start_y, int end_y) {
-    NoiseGen local_noise = noise; // Thread-local copy
-    for (int y = start_y; y < end_y; ++y) {
-      for (int x = 0; x < w_; ++x) {
-        float nu = local_noise.fbm2D((float)x * 0.015f + 1000.0f,
-                                     (float)y * 0.015f + 1000.0f, 3);
-        float nv = local_noise.fbm2D((float)x * 0.015f - 2000.0f,
-                                     (float)y * 0.015f - 3000.0f, 3);
+  parallel_for_2d(
+      h_, [this, base_u, base_v, elev, noise](int, int start_y, int end_y) {
+        NoiseGen local_noise = noise; // Thread-local copy
+        for (int y = start_y; y < end_y; ++y) {
+          for (int x = 0; x < w_; ++x) {
+            float nu = local_noise.fbm2D((float)x * 0.015f + 1000.0f,
+                                         (float)y * 0.015f + 1000.0f, 3);
+            float nv = local_noise.fbm2D((float)x * 0.015f - 2000.0f,
+                                         (float)y * 0.015f - 3000.0f, 3);
 
-        float u0 = base_u + nu;
-        float v0 = base_v + nv;
-        float speed = std::sqrt(u0 * u0 + v0 * v0);
-        if (speed < 1e-5f) {
-          ClimateCell &c = cells_[idx(x, y)];
-          c.wind_u = 0.0f;
-          c.wind_v = 0.0f;
-          c.upslope = 0.0f;
-          continue;
-        }
+            float u0 = base_u + nu;
+            float v0 = base_v + nv;
+            float speed = std::sqrt(u0 * u0 + v0 * v0);
+            if (speed < 1e-5f) {
+              ClimateCell &c = cells_[idx(x, y)];
+              c.wind_u = 0.0f;
+              c.wind_v = 0.0f;
+              c.upslope = 0.0f;
+              continue;
+            }
 
-        float gx = (elev(x + 1, y) - elev(x - 1, y)) * 0.5f;
-        float gy = (elev(x, y + 1) - elev(x, y - 1)) * 0.5f;
-        float slope = std::sqrt(gx * gx + gy * gy);
+            float gx = (elev(x + 1, y) - elev(x - 1, y)) * 0.5f;
+            float gy = (elev(x, y + 1) - elev(x, y - 1)) * 0.5f;
+            float slope = std::sqrt(gx * gx + gy * gy);
 
-        float steepness = std::clamp(slope / 4.0f, 0.0f, 1.0f);
+            float steepness = std::clamp(slope / 4.0f, 0.0f, 1.0f);
 
-        float wu = u0, wv = v0;
-        if (slope > 1e-5f) {
-          float cx = -gy, cy = gx;
-          float dirx = u0 / speed, diry = v0 / speed;
-          if (cx * dirx + cy * diry < 0.0f) {
-            cx = -cx;
-            cy = -cy;
+            float wu = u0, wv = v0;
+            if (slope > 1e-5f) {
+              float cx = -gy, cy = gx;
+              float dirx = u0 / speed, diry = v0 / speed;
+              if (cx * dirx + cy * diry < 0.0f) {
+                cx = -cx;
+                cy = -cy;
+              }
+              float clen = std::sqrt(cx * cx + cy * cy);
+              cx /= clen;
+              cy /= clen;
+
+              float bx = dirx * (1.0f - steepness) + cx * steepness;
+              float by = diry * (1.0f - steepness) + cy * steepness;
+              float blen = std::sqrt(bx * bx + by * by);
+              if (blen > 1e-5f) {
+                wu = bx / blen * speed;
+                wv = by / blen * speed;
+              }
+            }
+
+            ClimateCell &c = cells_[idx(x, y)];
+            c.wind_u = wu;
+            c.wind_v = wv;
+            c.upslope = gx * wu + gy * wv;
           }
-          float clen = std::sqrt(cx * cx + cy * cy);
-          cx /= clen;
-          cy /= clen;
-
-          float bx = dirx * (1.0f - steepness) + cx * steepness;
-          float by = diry * (1.0f - steepness) + cy * steepness;
-          float blen = std::sqrt(bx * bx + by * by);
-          if (blen > 1e-5f) {
-            wu = bx / blen * speed;
-            wv = by / blen * speed;
-          }
         }
-
-        ClimateCell &c = cells_[idx(x, y)];
-        c.wind_u = wu;
-        c.wind_v = wv;
-        c.upslope = gx * wu + gy * wv;
-      }
-    }
-  });
+      });
 }
 
 void ClimateSystem::update_temperature(const std::vector<int> &ground_z,
@@ -310,8 +311,10 @@ void ClimateSystem::advect() {
         if (x > 0) {
           const ClimateCell &p = cells_[idx(x - 1, y)];
           if (p.wind_u > 0.0f) { // Blowing right (towards current cell)
-            float p_speed = std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
-            float p_move = std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
+            float p_speed =
+                std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
+            float p_move =
+                std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
             if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
@@ -322,8 +325,10 @@ void ClimateSystem::advect() {
         if (x < w_ - 1) {
           const ClimateCell &p = cells_[idx(x + 1, y)];
           if (p.wind_u < 0.0f) { // Blowing left (towards current cell)
-            float p_speed = std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
-            float p_move = std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
+            float p_speed =
+                std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
+            float p_move =
+                std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
             if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
@@ -336,8 +341,10 @@ void ClimateSystem::advect() {
         if (y > 0) {
           const ClimateCell &p = cells_[idx(x, y - 1)];
           if (p.wind_v > 0.0f) {
-            float p_speed = std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
-            float p_move = std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
+            float p_speed =
+                std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
+            float p_move =
+                std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
             if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
@@ -348,8 +355,10 @@ void ClimateSystem::advect() {
         if (y < h_ - 1) {
           const ClimateCell &p = cells_[idx(x, y + 1)];
           if (p.wind_v < 0.0f) {
-            float p_speed = std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
-            float p_move = std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
+            float p_speed =
+                std::sqrt(p.wind_u * p.wind_u + p.wind_v * p.wind_v);
+            float p_move =
+                std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
             if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
@@ -372,26 +381,31 @@ void ClimateSystem::advect() {
   for (int y = 0; y < h_; ++y) {
     ClimateCell &left = cells_[idx(0, y)];
     if (left.wind_u > 0.0f)
-      left.vapor += params_.boundary_relax * (params_.ocean_humidity - left.vapor);
+      left.vapor +=
+          params_.boundary_relax * (params_.ocean_humidity - left.vapor);
 
     ClimateCell &right = cells_[idx(w_ - 1, y)];
     if (right.wind_u < 0.0f)
-      right.vapor += params_.boundary_relax * (params_.ocean_humidity - right.vapor);
+      right.vapor +=
+          params_.boundary_relax * (params_.ocean_humidity - right.vapor);
   }
   for (int x = 0; x < w_; ++x) {
     ClimateCell &bottom = cells_[idx(x, 0)];
     if (bottom.wind_v > 0.0f)
-      bottom.vapor += params_.boundary_relax * (params_.ocean_humidity - bottom.vapor);
+      bottom.vapor +=
+          params_.boundary_relax * (params_.ocean_humidity - bottom.vapor);
 
     ClimateCell &top = cells_[idx(x, h_ - 1)];
     if (top.wind_v < 0.0f)
-      top.vapor += params_.boundary_relax * (params_.ocean_humidity - top.vapor);
+      top.vapor +=
+          params_.boundary_relax * (params_.ocean_humidity - top.vapor);
   }
   for (auto &c : cells_)
     c.vapor = std::max(0.0f, c.vapor);
 }
 
-const std::vector<float>& ClimateSystem::step_precipitation(NoiseGen &noise, float day_index) {
+const std::vector<float> &ClimateSystem::step_precipitation(NoiseGen &noise,
+                                                            float day_index) {
   std::fill(precip_buf_.begin(), precip_buf_.end(), 0.0f);
 
   parallel_for_2d(h_, [this, day_index, &noise](int, int start_y, int end_y) {
@@ -415,10 +429,9 @@ const std::vector<float>& ClimateSystem::step_precipitation(NoiseGen &noise, flo
                               (float)y * 0.07f - day_index * 0.17f, 2);
         if (storm > params_.convective_threshold) {
           const float span = 1.0f - params_.convective_threshold;
-          float intensity =
-              (span > 1e-6f)
-                  ? (storm - params_.convective_threshold) / span
-                  : 1.0f;
+          float intensity = (span > 1e-6f)
+                                ? (storm - params_.convective_threshold) / span
+                                : 1.0f;
           float convective = params_.convective_intensity * intensity;
           float draw = std::min(c.vapor, convective);
           c.vapor -= draw;
@@ -470,8 +483,8 @@ void GroundwaterGrid::recharge(int x, int y, float volume) {
   table_[idx(x, y)] += volume / params_.groundwater_porosity;
 }
 
-const std::vector<float>& GroundwaterGrid::update(const std::vector<int> &ground_z,
-                                                  const Game_map &map) {
+const std::vector<float> &
+GroundwaterGrid::update(const std::vector<int> &ground_z, const Game_map &map) {
   std::fill(discharge_buf_.begin(), discharge_buf_.end(), 0.0f);
 
   parallel_for_2d(h_, [this, &ground_z, &map](int, int start_y, int end_y) {
@@ -480,7 +493,7 @@ const std::vector<float>& GroundwaterGrid::update(const std::vector<int> &ground
         int i = idx(x, y);
         int gz = std::max(0, ground_z[i]);
         int z = std::clamp((int)std::lround(table_[i]), 0, gz);
-        
+
         float perm = map.get_tile(x, y, z).mat().permeability;
         float diffusion_rate = params_.groundwater_diffusion_rate *
                                (0.1f + 0.9f * std::clamp(perm, 0.0f, 1.0f));
@@ -654,9 +667,8 @@ void soil_percolation_step(Game_map &map, const std::vector<int> &ground_z,
           float drainage = 0.0f;
           if (theta > theta_fc) {
             float available = theta - theta_fc;
-            drainage =
-                std::max(0.0f, std::min(available,
-                                        k_theta * p.percolation_rate_scale));
+            drainage = std::max(
+                0.0f, std::min(available, k_theta * p.percolation_rate_scale));
           }
 
           if (drainage > 1e-6f) {
@@ -752,7 +764,7 @@ void capillary_rise_step(Game_map &map, const std::vector<int> &ground_z,
 
 void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
                         const Params &p, float &runoff_to_ocean,
-                        OverlandFlowBuffers& buffers) {
+                        OverlandFlowBuffers &buffers) {
   int width = map.get_width();
   int height = map.get_height();
   int depth_map = map.get_depth();
@@ -805,7 +817,8 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
           if (offmap) {
             n_wse = (float)ground_z[i] - 1.0f;
           } else {
-            n_wse = (float)ground_z[(std::size_t)ny * width + nx] + pond_depth(nx, ny);
+            n_wse = (float)ground_z[(std::size_t)ny * width + nx] +
+                    pond_depth(nx, ny);
           }
 
           float diff = (wse - n_wse) / DIST[d];
@@ -873,7 +886,8 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
         } else if (gz + 1 < depth_map) {
           Tile &t = mtile(map, x, y, gz + 1);
           t.state.liquid_volume += net; // net is negative
-          if (t.state.liquid_volume <= 1e-5f && t.material == MaterialType::AIR) {
+          if (t.state.liquid_volume <= 1e-5f &&
+              t.material == MaterialType::AIR) {
             t.state.liquid_volume = 0.0f;
           } else if (t.state.liquid_volume < 0.0f) {
             t.state.liquid_volume = 0.0f;
@@ -920,17 +934,16 @@ float evapotranspiration_step(Game_map &map, ClimateSystem &climate,
           float fc = t.field_capacity();
           float wp = t.wilting_point();
           float span = fc - wp;
-          wetness = (span > 1e-6f)
-                        ? std::clamp((t.state.liquid_volume - wp) / span,
-                                     0.0f, 1.0f)
-                        : 0.0f;
+          wetness =
+              (span > 1e-6f)
+                  ? std::clamp((t.state.liquid_volume - wp) / span, 0.0f, 1.0f)
+                  : 0.0f;
         }
         if (wetness <= 0.0f)
           continue;
 
         const ClimateCell &c = climate.at(x, y);
-        float wind_speed =
-            std::sqrt(c.wind_u * c.wind_u + c.wind_v * c.wind_v);
+        float wind_speed = std::sqrt(c.wind_u * c.wind_u + c.wind_v * c.wind_v);
         float surface_qsat = qsat(t.state.temperature, p);
         float vpd = std::max(0.0f, surface_qsat - c.vapor);
         if (vpd <= 0.0f)
@@ -939,8 +952,8 @@ float evapotranspiration_step(Game_map &map, ClimateSystem &climate,
         float evap = p.evap_coeff * wind_speed * vpd * wetness;
 
         float min_liquid_volume = is_pond ? 0.0f : t.wilting_point();
-        evap = std::min(evap, std::max(0.0f, t.state.liquid_volume -
-                                                 min_liquid_volume));
+        evap = std::min(
+            evap, std::max(0.0f, t.state.liquid_volume - min_liquid_volume));
         if (evap <= 1e-7f)
           continue;
 

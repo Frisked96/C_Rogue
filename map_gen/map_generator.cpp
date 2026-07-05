@@ -33,18 +33,18 @@ void MapGenerator::generate_terrain(Game_map &game_map, int seed) {
         if (z < terrain_height) {
           if (z > terrain_height - 3) {
             t = Tile(MaterialType::SOIL_BASE);
-            
-            // Give the topsoil some initial moisture so it isn't instantly 
+
+            // Give the topsoil some initial moisture so it isn't instantly
             // dust before the first rain falls. Field capacity is a safe start.
-            t.state.liquid_volume = t.field_capacity() * 0.5f; 
+            t.state.liquid_volume = t.field_capacity() * 0.5f;
           } else {
             t = Tile(MaterialType::STONE_BASE);
-            // Bedrock starts completely dry. The simulator's abstract 
+            // Bedrock starts completely dry. The simulator's abstract
             // GroundwaterGrid will handle filling it conceptually over time.
           }
         } else {
           t = Tile(MaterialType::AIR);
-          // NO PRE-FILLED OCEANS OR LAKES. The simulator will fill these 
+          // NO PRE-FILLED OCEANS OR LAKES. The simulator will fill these
           // basins naturally via precipitation and overland flow.
         }
         game_map.set_tile(x, y, z, t);

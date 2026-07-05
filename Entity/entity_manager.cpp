@@ -132,8 +132,7 @@ std::vector<Entity *> EntityManager::get_all_active() {
   return active;
 }
 
-bool EntityManager::is_blocked(int x, int y, int z,
-                                const Game_map &map) const {
+bool EntityManager::is_blocked(int x, int y, int z, const Game_map &map) const {
   if (!map.is_in_bounds(x, y, z))
     return true;
 

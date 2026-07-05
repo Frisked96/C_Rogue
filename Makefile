@@ -15,7 +15,11 @@ SRCS = main.cpp \
        map_gen/simulator.cpp \
        map_gen/visibility.cpp \
        Entity/entity_properties.cpp \
-       Entity/entity_manager.cpp
+       Entity/entity_manager.cpp \
+       Object/event_bus.cpp \
+       Object/object_prototype_db.cpp \
+       Object/object_manager.cpp \
+       Object/object_spawner.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 DEPS = $(SRCS:.cpp=.d)
@@ -41,9 +45,11 @@ clean:
 	if exist *.o del /q *.o
 	if exist map_gen\*.o del /q map_gen\*.o
 	if exist Entity\*.o del /q Entity\*.o
+	if exist Object\*.o del /q Object\*.o
 	if exist *.d del /q *.d
 	if exist map_gen\*.d del /q map_gen\*.d
 	if exist Entity\*.d del /q Entity\*.d
+	if exist Object\*.d del /q Object\*.d
 	if exist $(TARGET) del /q $(TARGET)
 	if exist $(DIAG_TARGET) del /q $(DIAG_TARGET)
 

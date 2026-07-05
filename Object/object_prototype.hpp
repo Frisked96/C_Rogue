@@ -4,6 +4,18 @@
 #include <cstdint>
 #include <string>
 
+struct SpawnRequirements {
+    bool requires_ground = true;
+    MaterialType ground_material = MaterialType::SOIL_BASE;
+    float min_soil_moisture = 0.05f; // min liquid_volume of the ground tile
+    float max_soil_moisture = 1.0f;
+    float min_temp = 278.0f;        // in Kelvin
+    float max_temp = 320.0f;
+    int min_z = 0;
+    int max_z = 100;
+    float probability = 0.05f;      // Probability of spawning on a valid tile
+};
+
 // ObjectPrototype: The static, read-only template.
 // Stored in a central database. Defines WHAT an object IS.
 // Analogous to MaterialProperties for tiles.
@@ -30,4 +42,10 @@ struct ObjectPrototype {
 
     // Tick frequency for updates
     TickFrequency tick_freq;
+
+    // Behavior type — determines which tick system updates this object.
+    // INERT objects just decay. VEGETATION absorbs water, grows, etc.
+    ObjectBehavior behavior = ObjectBehavior::INERT;
+    SpawnRequirements spawn_req;
 };
+

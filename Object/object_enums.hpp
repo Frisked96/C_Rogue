@@ -43,3 +43,11 @@ enum class TickFrequency : uint8_t {
     MEDIUM,     // Every ~10 turns
     LOW,        // Every ~100 turns
 };
+
+// Object behavior type — drives which tick logic applies.
+// Each behavior allocates its own sparse state on the instance.
+enum class ObjectBehavior : uint8_t {
+    INERT,       // No special tick (rocks, crates, items, corpses)
+    VEGETATION,  // Absorbs water from soil, grows, can be harvested (trees, bushes)
+    // Future: FUNGAL, AQUATIC, MINERAL_DEPOSIT, etc.
+};

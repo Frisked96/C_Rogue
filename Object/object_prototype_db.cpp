@@ -33,7 +33,9 @@ void ObjectPrototypeDB::load_defaults() {
         500.0f, 200.0f, MaterialType::SOIL_BASE,
         false, true, false, true,
         10, ProfessionType::NONE,
-        TickFrequency::LOW
+        TickFrequency::LOW,
+        ObjectBehavior::VEGETATION, // behavior
+        { true, MaterialType::SOIL_BASE, 0.08f, 0.9f, 283.0f, 310.0f, 5, 65, 0.04f }
     });
 
     register_prototype({
@@ -41,7 +43,9 @@ void ObjectPrototypeDB::load_defaults() {
         400.0f, 150.0f, MaterialType::SOIL_BASE,
         false, true, false, true,
         8, ProfessionType::NONE,
-        TickFrequency::LOW
+        TickFrequency::LOW,
+        ObjectBehavior::VEGETATION, // behavior
+        { true, MaterialType::SOIL_BASE, 0.03f, 0.8f, 268.0f, 300.0f, 15, 85, 0.06f }
     });
 
     // --- RESOURCES / ROCKS ---
@@ -118,6 +122,15 @@ void ObjectPrototypeDB::load_defaults() {
         100.0f, 80.0f, MaterialType::AIR,
         false, true, true, true,
         50, ProfessionType::MERCHANT,
+        TickFrequency::LOW
+    });
+
+    // --- ITEMS (continued) ---
+    register_prototype({
+        0, "Wood Log", '/', 130,
+        15.0f, 30.0f, MaterialType::SOIL_BASE,
+        false, false, false, false,
+        5, ProfessionType::NONE,
         TickFrequency::LOW
     });
 }

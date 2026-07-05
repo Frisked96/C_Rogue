@@ -234,7 +234,8 @@ public:
   // Orographic + convective precipitation. Consumes supersaturated vapor
   // (based on local temperature and orographic lift) and returns
   // precipitation depth (metres) per column for this substep.
-  const std::vector<float>& step_precipitation(NoiseGen &noise, float day_index);
+  const std::vector<float> &step_precipitation(NoiseGen &noise,
+                                               float day_index);
 
   // Evapotranspiration step adds water back into the local vapor field.
   void add_vapor(int x, int y, float amount);
@@ -257,7 +258,7 @@ private:
   int w_ = 0, h_ = 0;
   Params params_;
   std::vector<ClimateCell> cells_;
-  
+
   // Persistent scratch buffers (avoids per-substep heap allocations)
   std::vector<float> advect_delta_;
   std::vector<float> precip_buf_;
@@ -284,7 +285,7 @@ public:
   // volume wherever the table has risen above ground level (springs /
   // baseflow). Caller is expected to add the returned discharge to the
   // surface pond at (x, ground_z[x,y]+1).
-  const std::vector<float>& update(const std::vector<int> &ground_z,
+  const std::vector<float> &update(const std::vector<int> &ground_z,
                                    const Game_map &map);
 
   float water_table(int x, int y) const { return table_[idx(x, y)]; }
@@ -303,7 +304,7 @@ private:
   int w_ = 0, h_ = 0;
   Params params_;
   std::vector<float> table_;
-  
+
   // Persistent scratch buffers
   std::vector<float> discharge_buf_;
   std::vector<float> new_table_buf_;
@@ -353,7 +354,7 @@ struct OverlandFlowBuffers {
 // off the map edge is accumulated into `runoff_to_ocean` (informational).
 void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
                         const Params &p, float &runoff_to_ocean,
-                        OverlandFlowBuffers& buffers);
+                        OverlandFlowBuffers &buffers);
 
 // Step 5: evapotranspiration. Surface tiles (and ponds) lose moisture
 // proportional to wind speed * vapor-pressure-deficit * surface wetness;
