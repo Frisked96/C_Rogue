@@ -100,9 +100,12 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
   climate_.update_temperature(ground_z_, season_phase);
   climate_.advect();
 
-  // Capture by const reference to avoid copying the internal buffer
   const std::vector<float> &precip =
       climate_.step_precipitation(noise_, day_index);
+      
+  float step_rain = 0.0f;
+  for (float p : precip) step_rain += p;
+  last_year_rainfall_ += step_rain;
 
   auto end = std::chrono::high_resolution_clock::now();
   step_timings_["Atmosphere"] +=

@@ -833,7 +833,9 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
         }
 
         if (best_diff > 0.0f) {
-          float flow = std::min(pd, p.overland_flow_fraction * best_diff);
+          float blockage = map.get_surface(x, y).flow_blockage;
+          float flow_multiplier = std::max(0.01f, 1.0f - blockage);
+          float flow = std::min(pd, p.overland_flow_fraction * best_diff * flow_multiplier);
           if (flow > 1e-6f) {
             buffers.outflow[i] = flow;
             buffers.best_idx[i] = best_idx;

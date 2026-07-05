@@ -12,6 +12,7 @@ class ObjectManager;
 struct SurfaceCover {
   float snow_depth = 0.0f;  // metres
   float litter_mass = 0.0f; // kg
+  float flow_blockage = 0.0f; // 0.0 = no resistance, 1.0 = highly resistant (slows surface water)
 };
 
 // Soil chemistry & contamination – stored sparsely, only for tiles where it

@@ -37,6 +37,8 @@ public:
   float total_runoff_to_ocean() const { return total_runoff_to_ocean_; }
   float total_atmospheric_vapor() const { return climate_.total_vapor(); }
   float total_groundwater() const { return groundwater_.total_table(); }
+  float get_last_year_rainfall() const { return last_year_rainfall_; }
+  void reset_rainfall_tracker() { last_year_rainfall_ = 0.0f; }
 
   const std::unordered_map<std::string, double> &get_timings() const {
     return step_timings_;
@@ -62,6 +64,7 @@ private:
   bool initialized_ = false;
 
   float total_runoff_to_ocean_ = 0.0f; // informational accumulator
+  float last_year_rainfall_ = 0.0f;
 
   std::unordered_map<std::string, double> step_timings_;
 };
