@@ -241,11 +241,29 @@ void Terminal_renderer::render_map(const Game_map &map, int z, int cam_x,
   }
 }
 
-void Terminal_renderer::render_entities(EntityManager &entityManager,
+void Terminal_renderer::render_entities(EntityManager &entityManager, ObjectManager* objManager,
                                         const Game_map &map, int z, int cam_x,
                                         int cam_y) {
   int start_x = cam_x - width / 2;
   int start_y = cam_y - height / 2;
+
+  // Render objects first so entities draw on top
+  if (objManager) {
+    auto objects = objManager->get_all_active();
+    for (auto *obj : objects) {
+      if (obj->z == z) {
+        if (map.is_visible(obj->x, obj->y, obj->z)) {
+          int vx = obj->x - start_x;
+          int vy = obj->y - start_y;
+          if (vx >= 0 && vx < width && vy >= 0 && vy < height) {
+            const auto& proto = objManager->proto_db().get(obj->prototype_id);
+            view_grid[vy][vx].glyph = proto.glyph;
+            view_grid[vy][vx].fg = proto.fg_color;
+          }
+        }
+      }
+    }
+  }
 
   auto entities = entityManager.get_all_active();
   for (auto *entity : entities) {
@@ -263,7 +281,7 @@ void Terminal_renderer::render_entities(EntityManager &entityManager,
   }
 }
 
-void Terminal_renderer::draw_ui(const Entity *player, const Game_map &map,
+void Terminal_renderer::draw_ui(const Entity *player, ObjectManager* objManager, const Game_map &map,
                                 const std::string &msg) {
   if (debug_mode) {
     draw_ui_debug(player, map, msg);
@@ -277,7 +295,18 @@ void Terminal_renderer::draw_ui(const Entity *player, const Game_map &map,
 
     std::string surface_name = "Air";
     if (pz > 0) {
-      surface_name = map.get_tile(px, py, pz - 1).mat().name;
+      if (objManager && objManager->spatial().has_any(px, py, pz - 1)) {
+        for (auto uid : objManager->spatial().get_at(px, py, pz - 1)) {
+          auto* obj = objManager->get(uid);
+          if (obj && objManager->proto_db().get(obj->prototype_id).is_blocking) {
+            surface_name = objManager->proto_db().get(obj->prototype_id).name;
+            break;
+          }
+        }
+      }
+      if (surface_name == "Air") {
+        surface_name = map.get_tile(px, py, pz - 1).mat().name;
+      }
     }
 
     bool ceiling = (pz < map.get_depth() - 1) &&

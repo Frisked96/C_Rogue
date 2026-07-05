@@ -1,6 +1,10 @@
 #include "simulator.hpp"
 #include "game_map.hpp" // adjust this include if your Game_map header has a different name/path
 
+#include "../Object/object_spawner.hpp"
+#include "../Object/object_manager.hpp"
+#include "../Object/object_prototype_db.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -39,8 +43,11 @@ void MapSimulator::initialize(Game_map &game_map, int seed) {
 }
 
 // -----------------------------------------------------------------------
-void MapSimulator::run(Game_map &game_map, int seed, int num_years) {
+void MapSimulator::run(Game_map &game_map, int seed, int num_years,
+                       ObjectPrototypeDB *proto_db, ObjectManager *obj_mgr) {
   initialize(game_map, seed);
+
+  int total_died = 0;
 
   // Each "year" is broken into `substeps_per_year` daily-ish sub-steps so
   // no single step can move more than a tile's own capacity of water
@@ -52,6 +59,29 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years) {
     for (int s = 0; s < params_.substeps_per_year; ++s) {
       simulate_substep(game_map, s, year);
     }
+
+    // Tick objects once a year (this will trigger slow decay and tree growth)
+    if (obj_mgr) {
+      size_t before = obj_mgr->get_all_active().size();
+      obj_mgr->tick(&game_map);
+      size_t after = obj_mgr->get_all_active().size();
+      if (before > after) {
+        total_died += (before - after);
+      }
+    }
+
+    // Spawn objects dynamically across different stages of the simulation
+    if (proto_db && obj_mgr) {
+      if (year == 1 || year == 30 || year == num_years - 1) {
+        ObjectSpawner::populate(game_map, *proto_db, *obj_mgr, seed + year,
+                                ground_z_);
+      }
+    }
+  }
+
+  if (obj_mgr) {
+    std::printf("[MapSimulator] Simulation complete. Total objects died during sim: %d. Final active objects: %zu\n",
+                total_died, obj_mgr->get_all_active().size());
   }
 }
 

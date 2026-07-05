@@ -6,6 +6,9 @@
 #include <vector>
 
 // Surface cover stored only on the topmost (ground) layer (2D)
+class ObjectPrototypeDB;
+class ObjectManager;
+
 struct SurfaceCover {
   float snow_depth = 0.0f;  // metres
   float litter_mass = 0.0f; // kg
@@ -58,7 +61,7 @@ public:
   int get_depth() const { return depth; }
 
   // --- Map generation ---
-  void generate(int seed = 1337);
+  void generate(int seed = 1337, ObjectPrototypeDB* proto_db = nullptr, ObjectManager* obj_mgr = nullptr);
 
   // --- Visibility ---
   void clear_visibility();

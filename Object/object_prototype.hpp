@@ -13,7 +13,7 @@ struct SpawnRequirements {
     float max_temp = 320.0f;
     int min_z = 0;
     int max_z = 100;
-    float probability = 0.05f;      // Probability of spawning on a valid tile
+    float probability = 0.0f;      // Probability of spawning on a valid tile (0 by default)
 };
 
 // ObjectPrototype: The static, read-only template.
