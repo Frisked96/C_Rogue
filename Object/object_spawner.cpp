@@ -65,6 +65,8 @@ void populate(Game_map& map, ObjectPrototypeDB& proto_db,
                 // Must have room above ground
                 if (spawn_z >= depth) continue;
 
+                float current_prob = req.probability;
+
                 // Ground material
                 if (req.requires_ground) {
                     const Tile& ground = map.get_tile(x, y, gz);
@@ -74,6 +76,16 @@ void populate(Game_map& map, ObjectPrototypeDB& proto_db,
                     float moisture = ground.state.liquid_volume;
                     if (moisture < req.min_soil_moisture) continue;
                     if (moisture > req.max_soil_moisture) continue;
+                    
+                    // Trees prefer higher moisture, up to their max_soil_moisture (which prevents spawning in mud)
+                    if (proto.behavior == ObjectBehavior::VEGETATION) {
+                        // Normalize moisture to [0, 1] within their allowed range
+                        float range = req.max_soil_moisture - req.min_soil_moisture;
+                        float normalized = (range > 0.001f) ? (moisture - req.min_soil_moisture) / range : 0.0f;
+                        
+                        // Scale probability: baseline at min moisture, up to 3x higher near max moisture
+                        current_prob = req.probability * (1.0f + 2.0f * normalized);
+                    }
 
                     // Temperature
                     float temp = ground.state.temperature;
@@ -87,7 +99,7 @@ void populate(Game_map& map, ObjectPrototypeDB& proto_db,
                 if (obj_mgr.spatial().has_any(x, y, spawn_z)) continue;
 
                 // Probability roll
-                if (rand_float(rng_state) > req.probability) continue;
+                if (rand_float(rng_state) > current_prob) continue;
 
                 // All checks passed -- spawn the object
                 obj_mgr.spawn(proto_id, x, y, spawn_z);
