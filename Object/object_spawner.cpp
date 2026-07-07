@@ -1,3 +1,4 @@
+#include <cmath>
 #include "object_spawner.hpp"
 #include "../game_map.hpp"
 #include <cstdlib>
@@ -77,14 +78,15 @@ void populate(Game_map& map, ObjectPrototypeDB& proto_db,
                     if (moisture < req.min_soil_moisture) continue;
                     if (moisture > req.max_soil_moisture) continue;
                     
-                    // Trees prefer higher moisture, up to their max_soil_moisture (which prevents spawning in mud)
                     if (proto.behavior == ObjectBehavior::VEGETATION) {
                         // Normalize moisture to [0, 1] within their allowed range
                         float range = req.max_soil_moisture - req.min_soil_moisture;
                         float normalized = (range > 0.001f) ? (moisture - req.min_soil_moisture) / range : 0.0f;
                         
-                        // Scale probability: baseline at min moisture, up to 3x higher near max moisture
-                        current_prob = req.probability * (1.0f + 2.0f * normalized);
+                        // Scale probability: baseline at min moisture, up to 4x higher near ideal moisture (30-50% normalized)
+                        float ideal_factor = 1.0f - std::fabs(normalized - 0.4f) * 2.0f;
+                        ideal_factor = std::max(0.0f, ideal_factor);
+                        current_prob = req.probability * (1.0f + 3.0f * ideal_factor);
                     }
 
                     // Temperature
@@ -93,7 +95,13 @@ void populate(Game_map& map, ObjectPrototypeDB& proto_db,
                 }
 
                 // The spawn tile itself must be air (not already occupied by solid)
-                if (map.get_tile(x, y, spawn_z).material != MaterialType::AIR) continue;
+                const Tile& trunk_tile = map.get_tile(x, y, spawn_z);
+                if (trunk_tile.material != MaterialType::AIR) continue;
+
+                // Don't spawn trees inside deep water
+                if (proto.behavior == ObjectBehavior::VEGETATION) {
+                    if (trunk_tile.state.liquid_volume > 0.05f) continue;
+                }
 
                 // Don't stack objects -- skip if something is already here
                 if (obj_mgr.spatial().has_any(x, y, spawn_z)) continue;

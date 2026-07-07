@@ -14,6 +14,16 @@ const Tile &Game_map::get_tile(int x, int y, int z) const {
   return Tiles::Wall;
 }
 
+Tile &Game_map::get_tile_mut(int x, int y, int z) {
+  if (is_in_bounds(x, y, z))
+    return map[get_index(x, y, z)];
+
+  // Return a static dummy tile if out of bounds to avoid crashes
+  static Tile dummy_tile;
+  dummy_tile = Tiles::Wall; // Reset state
+  return dummy_tile;
+}
+
 void Game_map::set_tile(int x, int y, int z, const Tile &tile) {
   if (is_in_bounds(x, y, z))
     map[get_index(x, y, z)] = tile;

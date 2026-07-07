@@ -114,11 +114,20 @@ void ObjectManager::move(ObjectUID uid, int nx, int ny, int nz) {
     event_bus_.announce(EventType::OBJECT_MOVED, {uid, 0, 0.0f});
 }
 
-void ObjectManager::tick(Game_map* map) {
+void ObjectManager::tick(Game_map* map, bool is_world_gen) {
     turn_counter_++;
 
     bool do_medium = (turn_counter_ % 10 == 0);
     bool do_low    = (turn_counter_ % 100 == 0);
+
+    // Reset flow blockage map-wide if low tick (vegetation tick runs on low)
+    if (do_low && map) {
+        for (int y = 0; y < map->get_height(); ++y) {
+            for (int x = 0; x < map->get_width(); ++x) {
+                map->get_surface(x, y).flow_blockage = 0.0f;
+            }
+        }
+    }
 
     for (auto& slot : slots_) {
         if (!slot.occupied) continue;
@@ -141,7 +150,7 @@ void ObjectManager::tick(Game_map* map) {
             tick_low(obj, proto);
             // Vegetation update: water absorption from soil, growth, drought
             if (proto.behavior == ObjectBehavior::VEGETATION && obj.vegetation && map) {
-                tick_vegetation(obj, proto, map);
+                tick_vegetation(obj, proto, map, is_world_gen);
             }
         }
     }
@@ -205,8 +214,78 @@ void ObjectManager::tick_low(ObjectInstance& obj, const ObjectPrototype& proto) 
     }
 }
 
-void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& /*proto*/, Game_map* map) {
+void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& /*proto*/, Game_map* map, bool is_world_gen) {
     if (!obj.vegetation || !map) return;
+
+    if (is_world_gen) {
+        obj.vegetation->age++;
+        obj.vegetation->canopy = std::min(2.0f, 1.0f + obj.vegetation->age * 0.02f);
+        obj.vegetation->canopy_density = std::min(1.0f, obj.vegetation->age * 0.01f);
+    }
+
+    if (map->is_in_bounds(obj.x, obj.y, obj.z)) {
+        const Tile& trunk_tile = map->get_tile(obj.x, obj.y, obj.z);
+        float water_level = trunk_tile.state.liquid_volume;
+
+        if (is_world_gen) {
+            if (water_level > 0.02f) {
+                obj.vegetation->water_damage += water_level;
+            } else {
+                obj.vegetation->water_damage = std::max(0.0f, obj.vegetation->water_damage - 0.05f);
+            }
+
+            float max_water_damage = 1.0f + obj.vegetation->canopy_density * 9.0f;
+            if (obj.vegetation->water_damage > max_water_damage || water_level > 1.5f) {
+                obj.health = 0.0f;
+                event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+                return;
+            }
+        }
+
+        float added_blockage = obj.vegetation->canopy_density * 0.8f;
+        map->get_surface(obj.x, obj.y).flow_blockage = std::min(0.8f, map->get_surface(obj.x, obj.y).flow_blockage + added_blockage);
+    }
+
+    if (is_world_gen) {
+        float total_shade = 0.0f;
+        int max_radius = 4; // Max canopy size is 2.0, so overlap distance is max 4.0
+        for (int dy = -max_radius; dy <= max_radius; dy++) {
+            for (int dx = -max_radius; dx <= max_radius; dx++) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = obj.x + dx;
+                int ny = obj.y + dy;
+                if (!map->is_in_bounds(nx, ny, obj.z)) continue;
+
+                for (ObjectUID other_uid : spatial_grid_.get_at(nx, ny, obj.z)) {
+                    ObjectInstance* other = get(other_uid);
+                    if (!other || !other->vegetation) continue;
+
+                    float dist_sq = (float)(dx * dx + dy * dy);
+                    float overlap_dist = obj.vegetation->canopy + other->vegetation->canopy;
+
+                    if (dist_sq < overlap_dist * overlap_dist) {
+                        if (other->vegetation->canopy_density > obj.vegetation->canopy_density || other->vegetation->canopy > obj.vegetation->canopy) {
+                            float dist = std::sqrt(dist_sq);
+                            float overlap_amount = overlap_dist - dist;
+                            float shade_from_tree = std::min(1.5f, overlap_amount * other->vegetation->canopy_density);
+                            total_shade += shade_from_tree;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (total_shade > 0.0f) {
+            obj.vegetation->canopy -= total_shade * 0.2f;
+            obj.vegetation->canopy = std::max(0.5f, obj.vegetation->canopy);
+        }
+
+        if (total_shade > 2.5f) {
+            obj.health = 0.0f;
+            event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            return;
+        }
+    }
 
     // The tree sits at (x, y, z). The soil voxel is directly below at (x, y, z-1).
     int soil_x = obj.x;
@@ -238,9 +317,8 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
         // Absorb water from the soil voxel
         float uptake = std::min(0.02f, soil_water - wilting);
 
-        // Mutate the soil tile's water (const_cast pattern used elsewhere in the
-        // codebase for in-place numeric edits on tiles, see climate_hydrology.cpp)
-        Tile& mutable_soil = const_cast<Tile&>(map->get_tile(soil_x, soil_y, soil_z));
+        // Mutate the soil tile's water safely
+        Tile& mutable_soil = map->get_tile_mut(soil_x, soil_y, soil_z);
         mutable_soil.state.liquid_volume -= uptake;
 
         // Increase tree hydration

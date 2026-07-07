@@ -63,7 +63,7 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
     // Tick objects once a year (this will trigger slow decay and tree growth)
     if (obj_mgr) {
       size_t before = obj_mgr->get_all_active().size();
-      obj_mgr->tick(&game_map);
+      obj_mgr->tick(&game_map, true);
       size_t after = obj_mgr->get_all_active().size();
       if (before > after) {
         total_died += (before - after);
@@ -72,7 +72,7 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
 
     // Spawn objects dynamically across different stages of the simulation
     if (proto_db && obj_mgr) {
-      if (year == 1 || year == 30 || year == num_years - 1) {
+      if (year <= 50 && year % 10 == 0) {
         ObjectSpawner::populate(game_map, *proto_db, *obj_mgr, seed + year,
                                 ground_z_);
       }

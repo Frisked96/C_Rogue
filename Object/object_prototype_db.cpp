@@ -35,7 +35,7 @@ void ObjectPrototypeDB::load_defaults() {
         10, ProfessionType::NONE,
         TickFrequency::LOW,
         ObjectBehavior::VEGETATION, // behavior
-        { true, MaterialType::SOIL_BASE, 0.08f, 0.9f, 283.0f, 310.0f, 5, 65, 0.04f }
+        { true, MaterialType::SOIL_BASE, 0.08f, 0.6f, 283.0f, 310.0f, 15, 60, 0.02f }
     });
 
     register_prototype({
@@ -45,7 +45,7 @@ void ObjectPrototypeDB::load_defaults() {
         8, ProfessionType::NONE,
         TickFrequency::LOW,
         ObjectBehavior::VEGETATION, // behavior
-        { true, MaterialType::SOIL_BASE, 0.03f, 0.8f, 268.0f, 300.0f, 15, 85, 0.06f }
+        { true, MaterialType::SOIL_BASE, 0.08f, 0.6f, 268.0f, 300.0f, 15, 60, 0.02f }
     });
 
     // --- RESOURCES / ROCKS ---

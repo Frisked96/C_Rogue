@@ -8,6 +8,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <condition_variable>
 #include <vector>
 
 namespace hydro {

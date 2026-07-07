@@ -12,6 +12,10 @@ struct VegetationState {
     float growth = 0.1f;         // 0.0 (seedling) to 1.0 (fully grown)
     float moisture = 0.5f;       // 0.0 (dried out) to 1.0 (fully saturated)
     int fruit_cooldown = 0;      // turns until it can produce fruit/seeds
+    int age = 0;                 // years active
+    float water_damage = 0.0f;
+    float canopy = 1.0f;
+    float canopy_density = 0.1f;
 };
 
 // ObjectInstance: The live, mutable state in the world.

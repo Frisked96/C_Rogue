@@ -33,6 +33,7 @@ public:
 
   // --- 3D tile access ---
   const Tile &get_tile(int x, int y, int z) const;
+  Tile &get_tile_mut(int x, int y, int z);
   void set_tile(int x, int y, int z, const Tile &tile);
   bool can_walk(int x, int y, int z) const;
   bool is_in_bounds(int x, int y, int z) const;

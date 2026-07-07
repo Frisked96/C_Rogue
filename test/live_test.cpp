@@ -3,12 +3,13 @@
 #include <string>
 #include <chrono>
 #include <thread>
-#include <conio.h> // For _kbhit() on Windows
+ // For _kbhit() on Windows
 #include <unordered_map>
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #ifdef _WIN32
+#include <conio.h> // For _kbhit() on Windows
 #define NOMINMAX
 #include <windows.h>
 #endif
@@ -166,12 +167,7 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
     std::vector<ObjectUID> to_kill_water;
     std::vector<ObjectUID> to_kill_shade;
     
-    // Reset all flow blockage (since trees can die, we recalculate it)
-    for (int y = 0; y < map.get_height(); ++y) {
-        for (int x = 0; x < map.get_width(); ++x) {
-            map.get_surface(x, y).flow_blockage = 0.0f;
-        }
-    }
+    // Flow blockage is now handled correctly by the ObjectManager and Game_map directly.
     
     for (auto& pair : custom_trees) {
         ObjectUID uid = pair.first;
@@ -205,7 +201,7 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
         }
         
         // 2. Drink Water
-        Tile& soil_tile = const_cast<Tile&>(map.get_tile(t.x, t.y, t.z - 1));
+        Tile& soil_tile = map.get_tile_mut(t.x, t.y, t.z - 1);
         float wilting = soil_tile.wilting_point();
         if (soil_tile.state.liquid_volume > wilting) {
             // Sucks up to 0.01m per year based on canopy size
@@ -214,8 +210,7 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
         }
         
         // 3. Affect Flow
-        // Tree trunk & roots block surface water. Larger density = more blockage (up to 0.8)
-        map.get_surface(t.x, t.y).flow_blockage = std::min(0.8f, t.canopy_density * 0.8f);
+        // Tree trunk & roots block surface water. Handled by ObjectManager now.
         
         // Immortal trees: No max_age death logic!
         
@@ -324,9 +319,15 @@ int main() {
     std::cout << "Starting simulation loop. Press any key to stop.\n";
     
     while (true) {
+#ifdef _WIN32
         if (_kbhit()) {
             break;
         }
+#else
+        if (year > 100) { // Limit to 100 years on non-Windows
+            break;
+        }
+#endif
         
         auto year_start = std::chrono::steady_clock::now();
         
@@ -344,7 +345,7 @@ int main() {
         float this_year_rain = simulator.get_last_year_rainfall();
         
         // Tick objects
-        obj_mgr.tick(&map);
+        obj_mgr.tick(&map, true);
         
         // Custom test aging & canopy logic
         test_tick_trees(map, obj_mgr);
