@@ -14,6 +14,6 @@ public:
 private:
     void render_normal(const Entity* player, ObjectManager* objManager,
                        const Game_map& map, const std::string& msg);
-    void render_debug(const Entity* player, const Game_map& map,
-                      const std::string& msg);
+    void render_debug(const Entity* player, ObjectManager* objManager,
+                      const Game_map& map, const std::string& msg);
 };

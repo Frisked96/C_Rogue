@@ -257,44 +257,48 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
     }
 
     if (is_world_gen) {
-        float total_shade = 0.0f;
-        int max_radius = 4; // Max canopy size is 2.0, so overlap distance is max 4.0
-        for (int dy = -max_radius; dy <= max_radius; dy++) {
-            for (int dx = -max_radius; dx <= max_radius; dx++) {
-                if (dx == 0 && dy == 0) continue;
-                int nx = obj.x + dx;
-                int ny = obj.y + dy;
-                if (!map->is_in_bounds(nx, ny, obj.z)) continue;
-                
-                for (ObjectUID other_uid : spatial_grid_.get_at(nx, ny, obj.z)) {
-                    ObjectInstance* other = get(other_uid);
-                    if (!other || !other->vegetation) continue;
+        // Performance optimization: only compute expensive geometric shade overlaps
+        // every 5 years during world generation. Trees still age/grow normally.
+        if (obj.vegetation->age % 5 == 0) {
+            float total_shade = 0.0f;
+            int max_radius = 4; // Max canopy size is 2.0, so overlap distance is max 4.0
+            for (int dy = -max_radius; dy <= max_radius; dy++) {
+                for (int dx = -max_radius; dx <= max_radius; dx++) {
+                    if (dx == 0 && dy == 0) continue;
+                    int nx = obj.x + dx;
+                    int ny = obj.y + dy;
+                    if (!map->is_in_bounds(nx, ny, obj.z)) continue;
                     
-                    float dist_sq = (float)(dx * dx + dy * dy);
-                    float overlap_dist = obj.vegetation->canopy + other->vegetation->canopy;
+                    for (ObjectUID other_uid : spatial_grid_.get_at(nx, ny, obj.z)) {
+                        ObjectInstance* other = get(other_uid);
+                        if (!other || !other->vegetation) continue;
+                        
+                        float dist_sq = (float)(dx * dx + dy * dy);
+                        float overlap_dist = obj.vegetation->canopy + other->vegetation->canopy;
 
-                    if (dist_sq < overlap_dist * overlap_dist) {
-                        if (other->vegetation->canopy_density > obj.vegetation->canopy_density || other->vegetation->canopy > obj.vegetation->canopy) {
-                            float dist = std::sqrt(dist_sq);
-                            float overlap_amount = overlap_dist - dist;
-                            float shade_from_tree = std::min(1.5f, overlap_amount * other->vegetation->canopy_density);
-                            total_shade += shade_from_tree;
+                        if (dist_sq < overlap_dist * overlap_dist) {
+                            if (other->vegetation->canopy_density > obj.vegetation->canopy_density || other->vegetation->canopy > obj.vegetation->canopy) {
+                                float dist = std::sqrt(dist_sq);
+                                float overlap_amount = overlap_dist - dist;
+                                float shade_from_tree = std::min(1.5f, overlap_amount * other->vegetation->canopy_density);
+                                total_shade += shade_from_tree;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if (total_shade > 0.0f) {
-            obj.vegetation->canopy -= total_shade * 0.2f;
-            obj.vegetation->canopy = std::max(0.5f, obj.vegetation->canopy);
-        }
+            if (total_shade > 0.0f) {
+                obj.vegetation->canopy -= total_shade * 0.2f;
+                obj.vegetation->canopy = std::max(0.5f, obj.vegetation->canopy);
+            }
 
-        if (total_shade > 2.5f) {
-            obj.health = 0.0f;
-            event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
-            death_queue_.push_back(obj.uid);
-            return;
+            if (total_shade > 2.5f) {
+                obj.health = 0.0f;
+                event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+                death_queue_.push_back(obj.uid);
+                return;
+            }
         }
     }
 
@@ -322,42 +326,33 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
         return;
     }
 
-    float soil_water = soil_tile.state.liquid_volume;
-    float wilting = soil_tile.wilting_point();
-
-    if (soil_water > wilting) {
-        // Absorb water from the soil voxel
-        float uptake = std::min(0.02f, soil_water - wilting);
-
-        // Mutate the soil tile's water safely
-        Tile& mutable_soil = map->get_tile_mut(soil_x, soil_y, soil_z);
-        mutable_soil.state.liquid_volume -= uptake;
-
-        // Increase tree hydration
-        obj.vegetation->moisture = std::min(1.0f, obj.vegetation->moisture + uptake * 5.0f);
-
-        // Growth: advance if well-hydrated
-        if (obj.vegetation->moisture > 0.3f && obj.vegetation->growth < 1.0f) {
-            obj.vegetation->growth = std::min(1.0f, obj.vegetation->growth + 0.005f);
+    if (!is_world_gen) {
+        float soil_water = soil_tile.state.liquid_volume;
+        float wilting = soil_tile.wilting_point();
+        if (soil_water > wilting) {
+            float uptake = std::min(0.02f, soil_water - wilting);
+            Tile& mutable_soil = map->get_tile_mut(soil_x, soil_y, soil_z);
+            mutable_soil.state.liquid_volume -= uptake;
+            obj.vegetation->moisture = std::min(1.0f, obj.vegetation->moisture + uptake * 5.0f);
+        } else {
+            obj.vegetation->moisture = std::max(0.0f, obj.vegetation->moisture - 0.03f);
         }
+    }
 
-        // Health regeneration when hydrated
-        const auto& tree_proto = proto_db_.get(obj.prototype_id);
-        if (obj.vegetation->moisture > 0.2f && obj.health < tree_proto.max_health) {
-            obj.health = std::min(tree_proto.max_health, obj.health + 0.5f);
-        }
-    } else {
-        // Soil too dry -- tree loses hydration
-        obj.vegetation->moisture = std::max(0.0f, obj.vegetation->moisture - 0.03f);
-
-        // Drought damage when completely dehydrated
-        if (obj.vegetation->moisture <= 0.0f) {
-            float old_health = obj.health;
-            obj.health = std::max(0.0f, obj.health - 1.5f);
-            if (obj.health != old_health) {
-                event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
-                if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
-            }
+    // Apply growth and health based on current moisture (which may have been updated gradually by substeps)
+    if (obj.vegetation->moisture > 0.3f && obj.vegetation->growth < 1.0f) {
+        obj.vegetation->growth = std::min(1.0f, obj.vegetation->growth + 0.005f);
+    }
+    const auto& tree_proto = proto_db_.get(obj.prototype_id);
+    if (obj.vegetation->moisture > 0.2f && obj.health < tree_proto.max_health) {
+        obj.health = std::min(tree_proto.max_health, obj.health + 0.5f);
+    }
+    if (obj.vegetation->moisture <= 0.0f) {
+        float old_health = obj.health;
+        obj.health = std::max(0.0f, obj.health - 1.5f);
+        if (obj.health != old_health) {
+            event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
         }
     }
 
@@ -375,4 +370,31 @@ std::vector<ObjectInstance*> ObjectManager::get_all_active() {
         }
     }
     return result;
+}
+
+void ObjectManager::drink_water_all(Game_map* map, float drink_amount, float dry_amount) {
+    if (!map) return;
+    for (auto& slot : slots_) {
+        if (!slot.occupied) continue;
+        ObjectInstance& obj = slot.obj;
+        if (obj.vegetation && obj.health > 0.0f) {
+            int soil_x = obj.x;
+            int soil_y = obj.y;
+            int soil_z = obj.z - 1;
+            if (map->is_in_bounds(soil_x, soil_y, soil_z)) {
+                Tile& t = map->get_tile_mut(soil_x, soil_y, soil_z);
+                if (t.material != MaterialType::SOIL_BASE) continue;
+                
+                float wilting = t.wilting_point();
+                if (t.state.liquid_volume > wilting) {
+                    float uptake = std::min(drink_amount, t.state.liquid_volume - wilting);
+                    t.state.liquid_volume -= uptake;
+                    float gain = (uptake / 0.02f) * 0.1f; // Matches the + uptake * 5.0f math
+                    obj.vegetation->moisture = std::min(1.0f, obj.vegetation->moisture + gain);
+                } else {
+                    obj.vegetation->moisture = std::max(0.0f, obj.vegetation->moisture - dry_amount);
+                }
+            }
+        }
+    }
 }

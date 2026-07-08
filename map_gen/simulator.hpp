@@ -46,7 +46,7 @@ public:
 
   void update_params();
   void initialize(Game_map &game_map, int seed);
-  void simulate_substep(Game_map &game_map, int substep, int year);
+  void simulate_substep(Game_map &game_map, int substep, int year, ObjectManager* obj_mgr = nullptr);
   const std::vector<int>& get_ground_z() const { return ground_z_; }
   const hydro::Params& get_params() const { return params_; }
   hydro::Params& get_params_mut() { return params_; }

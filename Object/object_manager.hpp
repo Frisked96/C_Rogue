@@ -62,6 +62,9 @@ public:
     // at their appropriate frequencies.
     void tick(Game_map* map = nullptr, bool is_world_gen = false);
 
+    // Fast-path to satisfy vegetation water demands during simulator substeps
+    void drink_water_all(Game_map* map, float drink_amount, float dry_amount);
+
     // Get all active objects (for rendering/iteration).
     std::vector<ObjectInstance*> get_all_active();
 

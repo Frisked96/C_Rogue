@@ -63,7 +63,7 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
   // this argument if you need a faster/slower world-gen pass.
   for (int year = 0; year < num_years; ++year) {
     for (int s = 0; s < params_.substeps_per_year; ++s) {
-      simulate_substep(game_map, s, year);
+      simulate_substep(game_map, s, year, obj_mgr);
     }
 
     // Tick objects once a year (this will trigger slow decay and tree growth)
@@ -96,7 +96,7 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
 }
 
 // -----------------------------------------------------------------------
-void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
+void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year, ObjectManager* obj_mgr) {
   float season_phase =
       (float)substep / (float)params_.substeps_per_year; // 0..1 over the year
   float day_index = (float)(year * params_.substeps_per_year + substep);
@@ -148,6 +148,11 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year) {
 
   // --- 5. Evapotranspiration (closes the loop back into the atmosphere) ---
   start = std::chrono::high_resolution_clock::now();
+  if (obj_mgr) {
+      float drink_amount = 0.02f / params_.substeps_per_year;
+      float dry_amount = 0.03f / params_.substeps_per_year;
+      obj_mgr->drink_water_all(&game_map, drink_amount, dry_amount);
+  }
   hydro::evapotranspiration_step(game_map, climate_, ground_z_, params_);
   end = std::chrono::high_resolution_clock::now();
   step_timings_["Evapotranspiration"] +=

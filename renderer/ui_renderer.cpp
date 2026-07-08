@@ -7,7 +7,7 @@ void UIRenderer::render(const Entity* player, ObjectManager* objManager,
                         const Game_map& map, const std::string& msg,
                         bool debug_mode) {
   if (debug_mode) {
-    render_debug(player, map, msg);
+    render_debug(player, objManager, map, msg);
     return;
   }
   render_normal(player, objManager, map, msg);
@@ -80,8 +80,8 @@ void UIRenderer::render_normal(const Entity* player, ObjectManager* objManager,
                "---\033[0m              \n";
 }
 
-void UIRenderer::render_debug(const Entity* player, const Game_map& map,
-                              const std::string& msg) {
+void UIRenderer::render_debug(const Entity* player, ObjectManager* objManager,
+                              const Game_map& map, const std::string& msg) {
   if (!player) {
     std::cout << "\033[1;31m[DEBUG] No player entity\033[0m\n";
     return;
@@ -109,34 +109,33 @@ void UIRenderer::render_debug(const Entity* player, const Game_map& map,
     return oss.str();
   };
 
-  // --- Lines 2-4: Tile player is INSIDE (z-level) ---
-  if (map.is_in_bounds(px, py, pz)) {
-    const Tile &t = map.get_tile(px, py, pz);
-    const auto &m = t.mat();
-    std::cout << "\033[36mINSIDE [" << pz << "]: \033[37m" << m.name
-              << " | glyph:'" << m.glyph
-              << "' solid:" << (m.is_solid ? "Y" : "N")
-              << " opaque:" << (m.is_opaque ? "Y" : "N") << "    \n";
-    std::cout << "\033[36m  Water: \033[37m" << ff(t.state.liquid_volume)
-              << " \033[36mIce: \033[37m" << ff(t.state.frozen_volume)
-              << " \033[36mTemp: \033[37m" << ff(t.state.temperature)
-              << "K \033[36mCompact: \033[37m" << ff(t.state.compaction)
-              << "    \n";
-    std::cout << "\033[36m  Density: \033[37m" << ff(m.density_kgm3)
-              << "kg/m3 \033[36mPoros: \033[37m" << ff(m.max_porosity)
-              << " \033[36mPerm: \033[37m" << ff(m.permeability)
-              << " \033[36mShear: \033[37m" << ff(m.shear_strength)
-              << "kPa    \n";
-  }
+  auto print_layer = [&](int z, const std::string& prefix) {
+    if (!map.is_in_bounds(px, py, z)) return;
 
-  // --- Lines 5-7: Tile player is STANDING ON (z-1) ---
-  if (pz > 0 && map.is_in_bounds(px, py, pz - 1)) {
-    const Tile &t = map.get_tile(px, py, pz - 1);
+    const Tile &t = map.get_tile(px, py, z);
     const auto &m = t.mat();
-    std::cout << "\033[36mON [" << (pz - 1) << "]: \033[37m" << m.name
+    std::cout << "\033[36m" << prefix << " [" << z << "]: \033[37m" << m.name
               << " | glyph:'" << m.glyph
               << "' solid:" << (m.is_solid ? "Y" : "N")
               << " opaque:" << (m.is_opaque ? "Y" : "N") << "    \n";
+
+    if (objManager && objManager->spatial().has_any(px, py, z)) {
+      for (auto uid : objManager->spatial().get_at(px, py, z)) {
+        auto* obj = objManager->get(uid);
+        if (!obj) continue;
+        const auto& proto = objManager->proto_db().get(obj->prototype_id);
+        std::cout << "\033[36m  + [OBJ]: \033[1;33m" << proto.name
+                  << " \033[0;37m| HP: " << ff(obj->health) << "/" << ff(proto.max_health);
+        if (obj->vegetation) {
+           std::cout << " | Tree Age: " << obj->vegetation->age 
+                     << " Canopy: " << ff(obj->vegetation->canopy) 
+                     << " Moist: " << ff(obj->vegetation->moisture);
+        }
+        std::cout << "    \n";
+        break; // just show first object
+      }
+    }
+
     std::cout << "\033[36m  Water: \033[37m" << ff(t.state.liquid_volume)
               << " \033[36mIce: \033[37m" << ff(t.state.frozen_volume)
               << " \033[36mTemp: \033[37m" << ff(t.state.temperature)
@@ -147,6 +146,14 @@ void UIRenderer::render_debug(const Entity* player, const Game_map& map,
               << " \033[36mPerm: \033[37m" << ff(m.permeability)
               << " \033[36mShear: \033[37m" << ff(m.shear_strength)
               << "kPa    \n";
+  };
+
+  print_layer(pz, "INSIDE");
+  if (pz > 0) {
+    print_layer(pz - 1, "ON");
+  }
+  if (surface_z >= 0 && surface_z != pz && surface_z != pz - 1) {
+    print_layer(surface_z, "GROUND");
   }
 
   // --- Water Compass ---
