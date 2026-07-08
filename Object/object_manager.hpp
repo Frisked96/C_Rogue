@@ -21,6 +21,7 @@ private:
 
     std::vector<Slot> slots_;
     std::deque<uint32_t> free_slots_;
+    std::vector<ObjectUID> death_queue_;
 
     ObjectPrototypeDB& proto_db_;
     EventBus& event_bus_;

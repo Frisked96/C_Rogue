@@ -42,9 +42,15 @@ void MapSimulator::initialize(Game_map &game_map, int seed) {
   step_timings_["Groundwater"] = 0.0;
 }
 
+void MapSimulator::update_params() {
+  climate_.set_params(params_);
+  groundwater_.set_params(params_);
+}
+
 // -----------------------------------------------------------------------
 void MapSimulator::run(Game_map &game_map, int seed, int num_years,
                        ObjectPrototypeDB *proto_db, ObjectManager *obj_mgr) {
+  auto sim_start_time = std::chrono::high_resolution_clock::now();
   initialize(game_map, seed);
 
   int total_died = 0;
@@ -83,6 +89,10 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
     std::printf("[MapSimulator] Simulation complete. Total objects died during sim: %d. Final active objects: %zu\n",
                 total_died, obj_mgr->get_all_active().size());
   }
+
+  auto sim_end_time = std::chrono::high_resolution_clock::now();
+  double total_time = std::chrono::duration<double>(sim_end_time - sim_start_time).count();
+  std::printf("[MapSimulator] Total world generation time: %.3f seconds\n", total_time);
 }
 
 // -----------------------------------------------------------------------

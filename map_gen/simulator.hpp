@@ -44,10 +44,12 @@ public:
     return step_timings_;
   }
 
+  void update_params();
   void initialize(Game_map &game_map, int seed);
   void simulate_substep(Game_map &game_map, int substep, int year);
   const std::vector<int>& get_ground_z() const { return ground_z_; }
   const hydro::Params& get_params() const { return params_; }
+  hydro::Params& get_params_mut() { return params_; }
 
 private:
   hydro::Params params_;

@@ -40,8 +40,7 @@ Engine::Engine(int width, int height) : is_running(true) {
   map = std::make_unique<Game_map>(100, 100, 100); // 100x100x100 map
   map->generate(seed, object_prototype_db.get(), object_manager.get());
 
-  // Initialize renderer
-  renderer = std::make_unique<Terminal_renderer>(width, height);
+  renderer = std::make_unique<Renderer>(width, height);
 
   // Initialize input handler
   input_handler = std::make_unique<InputHandler>();
@@ -92,13 +91,10 @@ void Engine::run() {
 }
 
 void Engine::render() {
-  renderer->clear_screen();
-  renderer->clear_buffer();
-
+  Entity *player = entityManager.get(player_id);
   int player_x = 0;
   int player_y = 0;
   int player_z = 0;
-  Entity *player = entityManager.get(player_id);
   if (player) {
     player_x = player->state.x;
     player_y = player->state.y;
@@ -107,11 +103,8 @@ void Engine::render() {
                             player->state.z, player->props().vision_radius);
   }
 
-  renderer->render_map(*map, player_z, player_x, player_y);
-  renderer->render_entities(entityManager, object_manager.get(), *map, player_z, player_x, player_y);
-
-  renderer->draw();
-  renderer->draw_ui(player, object_manager.get(), *map, last_msg);
+  renderer->render(*map, entityManager, object_manager.get(), player, player_z,
+                   player_x, player_y, last_msg);
 }
 
 void Engine::handle_input() {

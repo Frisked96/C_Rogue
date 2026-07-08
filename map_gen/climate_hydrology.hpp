@@ -213,6 +213,7 @@ public:
   ClimateSystem() = default;
 
   void init(int width, int height, const Params &params);
+  void set_params(const Params &params) { params_ = params; }
 
   // Seed wind, temperature and initial (50% RH) vapor fields.
   void initialize(const std::vector<int> &ground_z, NoiseGen &noise);
@@ -272,6 +273,7 @@ public:
   GroundwaterGrid() = default;
 
   void init(int width, int height, const Params &params);
+  void set_params(const Params &params) { params_ = params; }
 
   // Initial water-table height (z-coordinate) per column, varied with
   // noise (some areas start wetter than others).

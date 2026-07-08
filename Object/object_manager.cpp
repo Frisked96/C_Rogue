@@ -125,8 +125,8 @@ void ObjectManager::move(ObjectUID uid, int nx, int ny, int nz) {
 void ObjectManager::tick(Game_map* map, bool is_world_gen) {
     turn_counter_++;
 
-    bool do_medium = (turn_counter_ % 10 == 0);
-    bool do_low    = (turn_counter_ % 100 == 0);
+    bool do_medium = is_world_gen || (turn_counter_ % 10 == 0);
+    bool do_low    = is_world_gen || (turn_counter_ % 100 == 0);
 
     for (auto& slot : slots_) {
         if (!slot.occupied) continue;
@@ -153,6 +153,12 @@ void ObjectManager::tick(Game_map* map, bool is_world_gen) {
             }
         }
     }
+
+    // Garbage Collection: flush the death queue
+    for (ObjectUID uid : death_queue_) {
+        kill(uid, map);
+    }
+    death_queue_.clear();
 
     // Clear dirty flags at end of turn
     event_bus_.clear_dirty();
@@ -191,6 +197,7 @@ void ObjectManager::tick_medium(ObjectInstance& obj, const ObjectPrototype& /*pr
         obj.health = std::max(0.0f, obj.health - 1.0f);
         if (obj.health != old_health) {
             event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
         }
     }
 
@@ -209,6 +216,7 @@ void ObjectManager::tick_low(ObjectInstance& obj, const ObjectPrototype& proto) 
         obj.health = std::max(0.0f, obj.health - 0.1f);
         if (obj.health != old_health) {
             event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
         }
     }
 }
@@ -237,6 +245,7 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
             if (obj.vegetation->water_damage > max_water_damage || water_level > 1.5f) {
                 obj.health = 0.0f;
                 event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+                death_queue_.push_back(obj.uid);
                 return;
             }
         }
@@ -284,6 +293,7 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
         if (total_shade > 2.5f) {
             obj.health = 0.0f;
             event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+            death_queue_.push_back(obj.uid);
             return;
         }
     }
@@ -306,6 +316,7 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
             obj.health = std::max(0.0f, obj.health - 2.0f);
             if (obj.health != old_health) {
                 event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+                if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
             }
         }
         return;
@@ -345,6 +356,7 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
             obj.health = std::max(0.0f, obj.health - 1.5f);
             if (obj.health != old_health) {
                 event_bus_.announce(EventType::HEALTH_CHANGED, {obj.uid, 0, obj.health});
+                if (obj.health <= 0.0f) death_queue_.push_back(obj.uid);
             }
         }
     }
