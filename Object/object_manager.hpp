@@ -48,7 +48,7 @@ public:
     ObjectUID spawn(uint16_t prototype_id, int x, int y, int z);
 
     // Kill/remove an object.
-    void kill(ObjectUID uid);
+    void kill(ObjectUID uid, Game_map* map = nullptr);
 
     // Get a pointer to a live object (nullptr if invalid/dead).
     ObjectInstance* get(ObjectUID uid);

@@ -16,6 +16,7 @@ struct VegetationState {
     float water_damage = 0.0f;
     float canopy = 1.0f;
     float canopy_density = 0.1f;
+    float current_flow_blockage = 0.0f;
 };
 
 // ObjectInstance: The live, mutable state in the world.

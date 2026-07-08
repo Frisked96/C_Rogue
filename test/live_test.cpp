@@ -112,7 +112,7 @@ void print_map_slice(const Game_map& map, ObjectManager& obj_mgr, int start_x, i
             }
             
             if (bg != 0) {
-                out += "\033[38;5;" + std::to_string(fg) + ";" + std::to_string(bg) + "m" + glyph + "\033[0m"; // Reset to stop bleeding
+                out += "\033[38;5;" + std::to_string(fg) + ";48;5;" + std::to_string(bg) + "m" + glyph + "\033[0m"; // Reset to stop bleeding
             } else {
                 out += "\033[38;5;" + std::to_string(fg) + "m" + glyph;
             }
@@ -215,22 +215,31 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
         // Immortal trees: No max_age death logic!
         
         float total_shade = 0.0f;
-        for (const auto& other_pair : custom_trees) {
-            if (other_pair.first == uid) continue;
-            const TestTree& ot = other_pair.second;
-            float dx = t.x - ot.x;
-            float dy = t.y - ot.y;
-            float dist_sq = dx*dx + dy*dy;
-            float overlap_dist = t.canopy + ot.canopy;
-            
-            if (dist_sq < overlap_dist * overlap_dist) {
-                // Shade is cast by taller/denser trees
-                if (ot.canopy_density > t.canopy_density || ot.canopy > t.canopy) {
-                    float dist = std::sqrt(dist_sq);
-                    float overlap_amount = overlap_dist - dist;
-                    // Max shade from one tree is capped so one tree cannot kill another alone
-                    float shade_from_tree = std::min(1.5f, overlap_amount * ot.canopy_density);
-                    total_shade += shade_from_tree;
+        int max_radius = 4;
+        for (int dy = -max_radius; dy <= max_radius; ++dy) {
+            for (int dx = -max_radius; dx <= max_radius; ++dx) {
+                if (dx == 0 && dy == 0) continue;
+                int nx = t.x + dx;
+                int ny = t.y + dy;
+                
+                if (nx >= 0 && nx < map.get_width() && ny >= 0 && ny < map.get_height()) {
+                    for (ObjectUID other_uid : obj_mgr.spatial().get_at(nx, ny, t.z)) {
+                        auto it = custom_trees.find(other_uid);
+                        if (it != custom_trees.end()) {
+                            const TestTree& ot = it->second;
+                            float dist_sq = (float)(dx*dx + dy*dy);
+                            float overlap_dist = t.canopy + ot.canopy;
+                            
+                            if (dist_sq < overlap_dist * overlap_dist) {
+                                if (ot.canopy_density > t.canopy_density || ot.canopy > t.canopy) {
+                                    float dist = std::sqrt(dist_sq);
+                                    float overlap_amount = overlap_dist - dist;
+                                    float shade_from_tree = std::min(1.5f, overlap_amount * ot.canopy_density);
+                                    total_shade += shade_from_tree;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -248,12 +257,12 @@ void test_tick_trees(Game_map& map, ObjectManager& obj_mgr) {
     }
     
     for (auto uid : to_kill_water) {
-        obj_mgr.kill(uid);
+        obj_mgr.kill(uid, &map);
         custom_trees.erase(uid);
         global_trees_died_water++;
     }
     for (auto uid : to_kill_shade) {
-        obj_mgr.kill(uid);
+        obj_mgr.kill(uid, &map);
         custom_trees.erase(uid);
         global_trees_died_shade++;
     }
@@ -306,6 +315,12 @@ int main() {
     }
     
     EventBus event_bus;
+    
+    // Subscribe to OBJECT_KILLED to clean up custom_trees safely
+    event_bus.subscribe(EventType::OBJECT_KILLED, [](const EventPayload& payload) {
+        custom_trees.erase(payload.source_uid);
+    });
+
     ObjectPrototypeDB proto_db;
     proto_db.load_defaults();
     ObjectManager obj_mgr(proto_db, event_bus);

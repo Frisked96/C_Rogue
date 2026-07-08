@@ -62,7 +62,7 @@ ObjectUID ObjectManager::spawn(uint16_t prototype_id, int x, int y, int z) {
     return obj.uid;
 }
 
-void ObjectManager::kill(ObjectUID uid) {
+void ObjectManager::kill(ObjectUID uid, Game_map* map) {
     uint32_t index = uid_index(uid);
     if (index >= slots_.size()) return;
 
@@ -72,6 +72,14 @@ void ObjectManager::kill(ObjectUID uid) {
     spatial_grid_.remove(uid, slot.obj.x, slot.obj.y, slot.obj.z);
 
     event_bus_.announce(EventType::OBJECT_KILLED, {uid, 0, 0.0f});
+
+    // Remove any flow blockage the tree was contributing before death
+    if (slot.obj.vegetation && map) {
+        if (map->is_in_bounds(slot.obj.x, slot.obj.y, slot.obj.z)) {
+            map->get_surface(slot.obj.x, slot.obj.y).flow_blockage -= slot.obj.vegetation->current_flow_blockage;
+            map->get_surface(slot.obj.x, slot.obj.y).flow_blockage = std::max(0.0f, map->get_surface(slot.obj.x, slot.obj.y).flow_blockage);
+        }
+    }
 
     slot.obj.active = false;
     slot.obj.life.reset();
@@ -119,15 +127,6 @@ void ObjectManager::tick(Game_map* map, bool is_world_gen) {
 
     bool do_medium = (turn_counter_ % 10 == 0);
     bool do_low    = (turn_counter_ % 100 == 0);
-
-    // Reset flow blockage map-wide if low tick (vegetation tick runs on low)
-    if (do_low && map) {
-        for (int y = 0; y < map->get_height(); ++y) {
-            for (int x = 0; x < map->get_width(); ++x) {
-                map->get_surface(x, y).flow_blockage = 0.0f;
-            }
-        }
-    }
 
     for (auto& slot : slots_) {
         if (!slot.occupied) continue;
@@ -242,8 +241,10 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
             }
         }
 
-        float added_blockage = obj.vegetation->canopy_density * 0.8f;
-        map->get_surface(obj.x, obj.y).flow_blockage = std::min(0.8f, map->get_surface(obj.x, obj.y).flow_blockage + added_blockage);
+        float new_blockage = std::min(0.8f, obj.vegetation->canopy_density * 0.8f);
+        float delta = new_blockage - obj.vegetation->current_flow_blockage;
+        map->get_surface(obj.x, obj.y).flow_blockage += delta;
+        obj.vegetation->current_flow_blockage = new_blockage;
     }
 
     if (is_world_gen) {
@@ -255,11 +256,11 @@ void ObjectManager::tick_vegetation(ObjectInstance& obj, const ObjectPrototype& 
                 int nx = obj.x + dx;
                 int ny = obj.y + dy;
                 if (!map->is_in_bounds(nx, ny, obj.z)) continue;
-
+                
                 for (ObjectUID other_uid : spatial_grid_.get_at(nx, ny, obj.z)) {
                     ObjectInstance* other = get(other_uid);
                     if (!other || !other->vegetation) continue;
-
+                    
                     float dist_sq = (float)(dx * dx + dy * dy);
                     float overlap_dist = obj.vegetation->canopy + other->vegetation->canopy;
 
