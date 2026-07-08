@@ -3,8 +3,8 @@
 #include <iostream>
 #include <sstream>
 
-void UIRenderer::render(const Entity* player, ObjectManager* objManager,
-                        const Game_map& map, const std::string& msg,
+void UIRenderer::render(const Entity *player, ObjectManager *objManager,
+                        const Game_map &map, const std::string &msg,
                         bool debug_mode) {
   if (debug_mode) {
     render_debug(player, objManager, map, msg);
@@ -13,8 +13,8 @@ void UIRenderer::render(const Entity* player, ObjectManager* objManager,
   render_normal(player, objManager, map, msg);
 }
 
-void UIRenderer::render_normal(const Entity* player, ObjectManager* objManager,
-                               const Game_map& map, const std::string& msg) {
+void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
+                               const Game_map &map, const std::string &msg) {
   // Print stats/help (pad with spaces to overwrite old text)
   if (player) {
     int px = player->state.x;
@@ -25,8 +25,9 @@ void UIRenderer::render_normal(const Entity* player, ObjectManager* objManager,
     if (pz > 0) {
       if (objManager && objManager->spatial().has_any(px, py, pz - 1)) {
         for (auto uid : objManager->spatial().get_at(px, py, pz - 1)) {
-          auto* obj = objManager->get(uid);
-          if (obj && objManager->proto_db().get(obj->prototype_id).is_blocking) {
+          auto *obj = objManager->get(uid);
+          if (obj &&
+              objManager->proto_db().get(obj->prototype_id).is_blocking) {
             surface_name = objManager->proto_db().get(obj->prototype_id).name;
             break;
           }
@@ -80,8 +81,8 @@ void UIRenderer::render_normal(const Entity* player, ObjectManager* objManager,
                "---\033[0m              \n";
 }
 
-void UIRenderer::render_debug(const Entity* player, ObjectManager* objManager,
-                              const Game_map& map, const std::string& msg) {
+void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
+                              const Game_map &map, const std::string &msg) {
   if (!player) {
     std::cout << "\033[1;31m[DEBUG] No player entity\033[0m\n";
     return;
@@ -109,8 +110,9 @@ void UIRenderer::render_debug(const Entity* player, ObjectManager* objManager,
     return oss.str();
   };
 
-  auto print_layer = [&](int z, const std::string& prefix) {
-    if (!map.is_in_bounds(px, py, z)) return;
+  auto print_layer = [&](int z, const std::string &prefix) {
+    if (!map.is_in_bounds(px, py, z))
+      return;
 
     const Tile &t = map.get_tile(px, py, z);
     const auto &m = t.mat();
@@ -121,15 +123,17 @@ void UIRenderer::render_debug(const Entity* player, ObjectManager* objManager,
 
     if (objManager && objManager->spatial().has_any(px, py, z)) {
       for (auto uid : objManager->spatial().get_at(px, py, z)) {
-        auto* obj = objManager->get(uid);
-        if (!obj) continue;
-        const auto& proto = objManager->proto_db().get(obj->prototype_id);
+        auto *obj = objManager->get(uid);
+        if (!obj)
+          continue;
+        const auto &proto = objManager->proto_db().get(obj->prototype_id);
         std::cout << "\033[36m  + [OBJ]: \033[1;33m" << proto.name
-                  << " \033[0;37m| HP: " << ff(obj->health) << "/" << ff(proto.max_health);
+                  << " \033[0;37m| HP: " << ff(obj->health) << "/"
+                  << ff(proto.max_health);
         if (obj->vegetation) {
-           std::cout << " | Tree Age: " << obj->vegetation->age 
-                     << " Canopy: " << ff(obj->vegetation->canopy) 
-                     << " Moist: " << ff(obj->vegetation->moisture);
+          std::cout << " | Tree Age: " << obj->vegetation->age
+                    << " Canopy: " << ff(obj->vegetation->canopy)
+                    << " Moist: " << ff(obj->vegetation->moisture);
         }
         std::cout << "    \n";
         break; // just show first object

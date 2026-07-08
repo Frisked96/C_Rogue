@@ -34,10 +34,10 @@ public:
   void draw();
   void set_tile(int x, int y, char c, int fg = 7);
   void render_map(const Game_map &map, int z, int cam_x, int cam_y);
-  void render_entities(EntityManager &entityManager, ObjectManager* objManager, const Game_map &map, int z,
-                       int cam_x, int cam_y);
-  void draw_ui(const Entity *player, ObjectManager* objManager, const Game_map &map,
-               const std::string &msg);
+  void render_entities(EntityManager &entityManager, ObjectManager *objManager,
+                       const Game_map &map, int z, int cam_x, int cam_y);
+  void draw_ui(const Entity *player, ObjectManager *objManager,
+               const Game_map &map, const std::string &msg);
   void toggle_debug_mode();
   bool is_debug_mode() const;
 };

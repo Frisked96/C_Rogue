@@ -28,7 +28,9 @@ public:
   // `num_years` defaults to 65 to match the original simulation length and
   // preserve the original call signature `run(game_map, seed)`. Useful for
   // the demo harness (and for tuning) to verify longer-term equilibrium.
-  void run(Game_map &game_map, int seed, int num_years = 65, ObjectPrototypeDB* proto_db = nullptr, ObjectManager* obj_mgr = nullptr);
+  void run(Game_map &game_map, int seed, int num_years = 65,
+           ObjectPrototypeDB *proto_db = nullptr,
+           ObjectManager *obj_mgr = nullptr);
 
   // Diagnostic: total ponded surface-water volume (m^3-equivalent).
   float balance_basins(Game_map &game_map);
@@ -46,10 +48,11 @@ public:
 
   void update_params();
   void initialize(Game_map &game_map, int seed);
-  void simulate_substep(Game_map &game_map, int substep, int year, ObjectManager* obj_mgr = nullptr);
-  const std::vector<int>& get_ground_z() const { return ground_z_; }
-  const hydro::Params& get_params() const { return params_; }
-  hydro::Params& get_params_mut() { return params_; }
+  void simulate_substep(Game_map &game_map, int substep, int year,
+                        ObjectManager *obj_mgr = nullptr);
+  const std::vector<int> &get_ground_z() const { return ground_z_; }
+  const hydro::Params &get_params() const { return params_; }
+  hydro::Params &get_params_mut() { return params_; }
 
 private:
   hydro::Params params_;

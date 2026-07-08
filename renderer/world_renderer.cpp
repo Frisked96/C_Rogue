@@ -1,7 +1,7 @@
 #include "world_renderer.hpp"
 #include <algorithm>
 
-void WorldRenderer::render(RenderPlane& plane, const Game_map& map, int z,
+void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
                            int cam_x, int cam_y) {
   int width = plane.width();
   int height = plane.height();
@@ -180,8 +180,8 @@ void WorldRenderer::render(RenderPlane& plane, const Game_map& map, int z,
 }
 
 // --- Debug Map Renderer ---
-void WorldRenderer::render_debug(RenderPlane& plane, const Game_map& map,
-                                 int z, int cam_x, int cam_y) {
+void WorldRenderer::render_debug(RenderPlane &plane, const Game_map &map, int z,
+                                 int cam_x, int cam_y) {
   static const int contour_bg[] = {232, 233, 234, 235, 236};
   int width = plane.width();
   int height = plane.height();

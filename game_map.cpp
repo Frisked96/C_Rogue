@@ -136,7 +136,8 @@ bool Game_map::is_explored(int x, int y, int z) const {
   return map[get_index(x, y, z)].is_explored;
 }
 
-void Game_map::generate(int seed, ObjectPrototypeDB* proto_db, ObjectManager* obj_mgr) {
+void Game_map::generate(int seed, ObjectPrototypeDB *proto_db,
+                        ObjectManager *obj_mgr) {
   MapGenerator gen;
   gen.generate(*this, seed, proto_db, obj_mgr);
 }

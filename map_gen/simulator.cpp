@@ -1,9 +1,9 @@
 #include "simulator.hpp"
 #include "game_map.hpp" // adjust this include if your Game_map header has a different name/path
 
-#include "../Object/object_spawner.hpp"
 #include "../Object/object_manager.hpp"
 #include "../Object/object_prototype_db.hpp"
+#include "../Object/object_spawner.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -86,17 +86,21 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
   }
 
   if (obj_mgr) {
-    std::printf("[MapSimulator] Simulation complete. Total objects died during sim: %d. Final active objects: %zu\n",
+    std::printf("[MapSimulator] Simulation complete. Total objects died during "
+                "sim: %d. Final active objects: %zu\n",
                 total_died, obj_mgr->get_all_active().size());
   }
 
   auto sim_end_time = std::chrono::high_resolution_clock::now();
-  double total_time = std::chrono::duration<double>(sim_end_time - sim_start_time).count();
-  std::printf("[MapSimulator] Total world generation time: %.3f seconds\n", total_time);
+  double total_time =
+      std::chrono::duration<double>(sim_end_time - sim_start_time).count();
+  std::printf("[MapSimulator] Total world generation time: %.3f seconds\n",
+              total_time);
 }
 
 // -----------------------------------------------------------------------
-void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year, ObjectManager* obj_mgr) {
+void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year,
+                                    ObjectManager *obj_mgr) {
   float season_phase =
       (float)substep / (float)params_.substeps_per_year; // 0..1 over the year
   float day_index = (float)(year * params_.substeps_per_year + substep);
@@ -112,9 +116,10 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year, O
 
   const std::vector<float> &precip =
       climate_.step_precipitation(noise_, day_index);
-      
+
   float step_rain = 0.0f;
-  for (float p : precip) step_rain += p;
+  for (float p : precip)
+    step_rain += p;
   last_year_rainfall_ += step_rain;
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -149,9 +154,9 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year, O
   // --- 5. Evapotranspiration (closes the loop back into the atmosphere) ---
   start = std::chrono::high_resolution_clock::now();
   if (obj_mgr) {
-      float drink_amount = 0.02f / params_.substeps_per_year;
-      float dry_amount = 0.03f / params_.substeps_per_year;
-      obj_mgr->drink_water_all(&game_map, drink_amount, dry_amount);
+    float drink_amount = 0.02f / params_.substeps_per_year;
+    float dry_amount = 0.03f / params_.substeps_per_year;
+    obj_mgr->drink_water_all(&game_map, drink_amount, dry_amount);
   }
   hydro::evapotranspiration_step(game_map, climate_, ground_z_, params_);
   end = std::chrono::high_resolution_clock::now();

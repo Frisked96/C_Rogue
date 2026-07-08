@@ -12,7 +12,8 @@ class ObjectManager;
 struct SurfaceCover {
   float snow_depth = 0.0f;  // metres
   float litter_mass = 0.0f; // kg
-  float flow_blockage = 0.0f; // 0.0 = no resistance, 1.0 = highly resistant (slows surface water)
+  float flow_blockage =
+      0.0f; // 0.0 = no resistance, 1.0 = highly resistant (slows surface water)
 };
 
 // Soil chemistry & contamination – stored sparsely, only for tiles where it
@@ -63,7 +64,8 @@ public:
   int get_depth() const { return depth; }
 
   // --- Map generation ---
-  void generate(int seed = 1337, ObjectPrototypeDB* proto_db = nullptr, ObjectManager* obj_mgr = nullptr);
+  void generate(int seed = 1337, ObjectPrototypeDB *proto_db = nullptr,
+                ObjectManager *obj_mgr = nullptr);
 
   // --- Visibility ---
   void clear_visibility();

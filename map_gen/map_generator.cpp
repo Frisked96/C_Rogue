@@ -3,7 +3,9 @@
 #include "simulator.hpp"
 #include <cmath>
 
-void MapGenerator::generate(Game_map &game_map, int seed, ObjectPrototypeDB* proto_db, ObjectManager* obj_mgr) {
+void MapGenerator::generate(Game_map &game_map, int seed,
+                            ObjectPrototypeDB *proto_db,
+                            ObjectManager *obj_mgr) {
   generate_terrain(game_map, seed);
   simulate_hydrology(game_map, seed, proto_db, obj_mgr);
 }
@@ -53,7 +55,9 @@ void MapGenerator::generate_terrain(Game_map &game_map, int seed) {
   }
 }
 
-void MapGenerator::simulate_hydrology(Game_map &game_map, int seed, ObjectPrototypeDB* proto_db, ObjectManager* obj_mgr) {
+void MapGenerator::simulate_hydrology(Game_map &game_map, int seed,
+                                      ObjectPrototypeDB *proto_db,
+                                      ObjectManager *obj_mgr) {
   // Run the hydrology simulation to generate rivers, lakes, and groundwater
   MapSimulator simulator;
   simulator.run(game_map, seed, 65, proto_db, obj_mgr);

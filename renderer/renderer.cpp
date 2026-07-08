@@ -1,8 +1,8 @@
 #include "renderer.hpp"
 
 Renderer::Renderer(int w, int h)
-    : backend_(w, h), compositor_(w, h),
-      map_plane_(w, h), entity_plane_(w, h), composed_(w, h) {}
+    : backend_(w, h), compositor_(w, h), map_plane_(w, h), entity_plane_(w, h),
+      composed_(w, h) {}
 
 void Renderer::render(const Game_map &map, EntityManager &entityManager,
                       ObjectManager *objManager, const Entity *player, int z,
