@@ -18,11 +18,7 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
         continue;
       }
 
-      if (!map.is_explored(mx, my, z)) {
-        plane.set(vx, vy, ' ', 0, 0);
-        continue;
-      }
-
+      // --- Raycast: find the surface tile ---
       int cz = z;
       const Tile *t = &map.get_tile(mx, my, cz);
 
@@ -32,6 +28,22 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
              t->state.liquid_volume <= 0.0f && t->state.frozen_volume <= 0.0f) {
         cz--;
         t = &map.get_tile(mx, my, cz);
+      }
+
+      // --- Check explored/visible across the whole column (z down to cz) ---
+      // The player may have explored tiles at a lower z-level; when ascending,
+      // those tiles should still be remembered rather than going black.
+      bool explored = false;
+      bool visible = false;
+      for (int ez = z; ez >= cz; --ez) {
+        if (map.is_explored(mx, my, ez)) explored = true;
+        if (map.is_visible(mx, my, ez)) visible = true;
+        if (explored && visible) break; // early out
+      }
+
+      if (!explored) {
+        plane.set(vx, vy, ' ', 0, 0);
+        continue;
       }
 
       int color = t->mat().fg_color;
@@ -132,9 +144,6 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
         }
       }
 
-      bool visible = map.is_visible(
-          mx, my, z); // Use player level visibility for the column
-
       if (visible) {
         // --- Elevation contour background coloring ---
         // Apply a subtle background gradient based on how far below the
@@ -198,11 +207,6 @@ void WorldRenderer::render_debug(RenderPlane &plane, const Game_map &map, int z,
         continue;
       }
 
-      if (!map.is_explored(mx, my, z)) {
-        plane.set(vx, vy, ' ', 0, 0);
-        continue;
-      }
-
       // Check for water anywhere in this column (z down to ground)
       bool water_in_column = false;
       if (map.is_in_bounds(mx, my, z)) {
@@ -226,12 +230,24 @@ void WorldRenderer::render_debug(RenderPlane &plane, const Game_map &map, int z,
         t = &map.get_tile(mx, my, cz);
       }
 
+      // Check explored across column (same fix as normal renderer)
+      bool explored = false;
+      bool visible = false;
+      for (int ez = z; ez >= cz; --ez) {
+        if (map.is_explored(mx, my, ez)) explored = true;
+        if (map.is_visible(mx, my, ez)) visible = true;
+        if (explored && visible) break;
+      }
+
+      if (!explored) {
+        plane.set(vx, vy, ' ', 0, 0);
+        continue;
+      }
+
       int surface_z = cz;
       char glyph = '0' + (surface_z % 10);
       int fg = 232 + std::min(23, surface_z / 4);
       int bg = contour_bg[(surface_z / 5) % 5];
-
-      bool visible = map.is_visible(mx, my, z);
 
       if (visible) {
         // Water presence indicator: teal background tint

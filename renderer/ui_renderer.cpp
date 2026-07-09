@@ -6,6 +6,11 @@
 void UIRenderer::render(const Entity *player, ObjectManager *objManager,
                         const Game_map &map, const std::string &msg,
                         bool debug_mode) {
+  // Always reset all ANSI formatting before drawing any UI text.
+  // This prevents the last cell's bg/fg color from the grid from bleeding
+  // into HUD lines (the "blue/red edge" bug).
+  std::cout << "\033[0m";
+
   if (debug_mode) {
     render_debug(player, objManager, map, msg);
     return;
@@ -15,7 +20,6 @@ void UIRenderer::render(const Entity *player, ObjectManager *objManager,
 
 void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
                                const Game_map &map, const std::string &msg) {
-  // Print stats/help (pad with spaces to overwrite old text)
   if (player) {
     int px = player->state.x;
     int py = player->state.y;
@@ -42,18 +46,18 @@ void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
                    map.get_tile(px, py, pz + 1).material != MaterialType::AIR;
 
     std::cout << "\033[1;37m" << player->props().name << " | Alt: " << pz << "m"
-              << " | Standing on: " << surface_name << "          \n";
+              << " | Standing on: " << surface_name << "\033[K\n";
 
-    std::cout << "Hunger: " << (int)(player->state.hunger * 100) << "% "
+    std::cout << "\033[0mHunger: " << (int)(player->state.hunger * 100) << "% "
               << "| Thirst: " << (int)(player->state.thirst * 100) << "% "
               << "| Site: "
-              << (ceiling ? "\033[33mUnderground\033[37m"
-                          : "\033[36mOpen Sky\033[37m")
-              << "    \n";
+              << (ceiling ? "\033[33mUnderground\033[0m"
+                          : "\033[36mOpen Sky\033[0m")
+              << "\033[K\n";
 
     // Message Log
     std::cout << "\033[1;33mLog: " << msg
-              << "\033[0m                                          \n";
+              << "\033[0m\033[K\n";
 
     // Simple cardinal surroundings (Compass)
     auto get_alt_diff = [&](int dx, int dy) -> std::string {
@@ -73,18 +77,22 @@ void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
       return (diff > 0 ? "+" : "") + std::to_string(diff);
     };
 
-    std::cout << "Near: [N:" << get_alt_diff(0, -1)
+    std::cout << "\033[0mNear: [N:" << get_alt_diff(0, -1)
               << "] [S:" << get_alt_diff(0, 1) << "] [W:" << get_alt_diff(-1, 0)
-              << "] [E:" << get_alt_diff(1, 0) << "]    \n";
+              << "] [E:" << get_alt_diff(1, 0) << "]\033[K\n";
   }
-  std::cout << "\033[0;32m-----------------------------------------------------"
-               "---\033[0m              \n";
+  std::cout << "\033[0;32m--------------------------------------------------------"
+               "\033[0m\033[K\n";
+  // Erase everything below the HUD so leftover lines from debug mode
+  // (which prints more rows) are cleaned up when switching back.
+  std::cout << "\033[J";
 }
 
 void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
                               const Game_map &map, const std::string &msg) {
   if (!player) {
-    std::cout << "\033[1;31m[DEBUG] No player entity\033[0m\n";
+    std::cout << "\033[1;31m[DEBUG] No player entity\033[0m\033[K\n";
+    std::cout << "\033[J";
     return;
   }
 
@@ -101,7 +109,7 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
 
   // --- Line 1: Header ---
   std::cout << "\033[1;32m[DEBUG MODE] Pos: (" << px << ", " << py << ", " << pz
-            << ") | Surface Elev: " << surface_z << "m\033[0m    \n";
+            << ") | Surface Elev: " << surface_z << "m\033[0m\033[K\n";
 
   // Helper to format floats
   auto ff = [](float v) -> std::string {
@@ -119,7 +127,7 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
     std::cout << "\033[36m" << prefix << " [" << z << "]: \033[37m" << m.name
               << " | glyph:'" << m.glyph
               << "' solid:" << (m.is_solid ? "Y" : "N")
-              << " opaque:" << (m.is_opaque ? "Y" : "N") << "    \n";
+              << " opaque:" << (m.is_opaque ? "Y" : "N") << "\033[K\n";
 
     if (objManager && objManager->spatial().has_any(px, py, z)) {
       for (auto uid : objManager->spatial().get_at(px, py, z)) {
@@ -135,7 +143,7 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
                     << " Canopy: " << ff(obj->vegetation->canopy)
                     << " Moist: " << ff(obj->vegetation->moisture);
         }
-        std::cout << "    \n";
+        std::cout << "\033[K\n";
         break; // just show first object
       }
     }
@@ -144,12 +152,12 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
               << " \033[36mIce: \033[37m" << ff(t.state.frozen_volume)
               << " \033[36mTemp: \033[37m" << ff(t.state.temperature)
               << "K \033[36mCompact: \033[37m" << ff(t.state.compaction)
-              << "    \n";
+              << "\033[K\n";
     std::cout << "\033[36m  Density: \033[37m" << ff(m.density_kgm3)
               << "kg/m3 \033[36mPoros: \033[37m" << ff(m.max_porosity)
               << " \033[36mPerm: \033[37m" << ff(m.permeability)
               << " \033[36mShear: \033[37m" << ff(m.shear_strength)
-              << "kPa    \n";
+              << "kPa\033[K\n";
   };
 
   print_layer(pz, "INSIDE");
@@ -233,14 +241,15 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
     }
   }
   std::cout << "  Nearest: " << (nearest >= 0 ? dir_names[nearest] : "NONE")
-            << "\033[0m    \n";
+            << "\033[0m\033[K\n";
 
   // --- Log ---
   std::cout << "\033[1;33mLog: " << msg
-            << "\033[0m                                          \n";
+            << "\033[0m\033[K\n";
 
   // --- Separator ---
-  std::cout << "\033[0;32m[DEBUG]----------------------------------------------"
-               "--------"
-               "\033[0m    \n";
+  std::cout << "\033[0;32m[DEBUG]--------------------------------------------------------"
+               "\033[0m\033[K\n";
+  // Erase everything below so switching to normal mode cleans up
+  std::cout << "\033[J";
 }
