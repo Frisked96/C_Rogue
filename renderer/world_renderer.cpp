@@ -1,6 +1,49 @@
 #include "world_renderer.hpp"
 #include <algorithm>
 
+namespace {
+  struct ColumnInfo {
+    int surface_z;        // first non‑air solid (or water/ice) below z0
+    const Tile* tile;     // pointer to that tile
+    float water_volume;   // total water in column from z0 down to ground
+    bool is_water;        // top layer is water or ice
+    bool is_ice;          // top layer is ice
+  };
+
+  // Compute the surface column for (mx,my) starting from z0.
+  // Returns info about what would be rendered.
+  ColumnInfo compute_surface(const Game_map &map, int mx, int my, int z0) {
+    ColumnInfo ci{};
+    int cz = z0;
+    const Tile *t = &map.get_tile(mx, my, cz);
+    // look down through air / water / ice
+    while (cz > 0 && t->material == MaterialType::AIR) {
+      cz--;
+      t = &map.get_tile(mx, my, cz);
+    }
+    ci.surface_z = cz;
+    ci.tile = t;
+
+    // Compute total water in column if top is water.
+    if (t->material == MaterialType::AIR &&
+        (t->state.liquid_volume > 0.0f || t->state.frozen_volume > 0.0f)) {
+      ci.is_water = true;
+      ci.is_ice = (t->state.frozen_volume > 0.0f);
+      float total = t->state.liquid_volume;
+      int wb = cz;
+      while (wb > 0) {
+        const Tile &wt = map.get_tile(mx, my, wb - 1);
+        if (wt.material == MaterialType::AIR && wt.state.liquid_volume > 0.0f) {
+          total += wt.state.liquid_volume;
+          wb--;
+        } else break;
+      }
+      ci.water_volume = total;
+    }
+    return ci;
+  }
+}
+
 void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
                            int cam_x, int cam_y) {
   int width = plane.width();
@@ -18,187 +61,98 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
         continue;
       }
 
-      // --- Raycast: find the surface tile ---
-      int cz = z;
-      const Tile *t = &map.get_tile(mx, my, cz);
+      // Compute surface column
+      ColumnInfo col = compute_surface(map, mx, my, z);
 
-      // Look down through air to find the first solid or air-with-liquid/ice
-      // tile
-      while (cz > 0 && t->material == MaterialType::AIR &&
-             t->state.liquid_volume <= 0.0f && t->state.frozen_volume <= 0.0f) {
-        cz--;
-        t = &map.get_tile(mx, my, cz);
-      }
-
-      // --- Check explored/visible across the whole column (z down to cz) ---
-      // The player may have explored tiles at a lower z-level; when ascending,
-      // those tiles should still be remembered rather than going black.
-      bool explored = false;
-      bool visible = false;
-      for (int ez = z; ez >= cz; --ez) {
+      // Explored/visible check
+      bool explored = false, visible = false;
+      for (int ez = z; ez >= col.surface_z; --ez) {
         if (map.is_explored(mx, my, ez)) explored = true;
         if (map.is_visible(mx, my, ez)) visible = true;
-        if (explored && visible) break; // early out
+        if (explored && visible) break;
       }
-
       if (!explored) {
-        // Look UP to see if we remember a higher surface!
-        // This happens if we are at a low elevation (e.g., base of a mountain)
-        // and the interior rock at our level was never explored, but we previously
-        // explored the surface above it. We should render that remembered surface.
         for (int ez = z + 1; ez < map.get_depth(); ++ez) {
           if (map.is_explored(mx, my, ez)) {
-            cz = ez;
-            t = &map.get_tile(mx, my, cz);
+            col = compute_surface(map, mx, my, ez);
             explored = true;
             visible = map.is_visible(mx, my, ez);
             break;
           }
         }
       }
-
       if (!explored) {
         plane.set(vx, vy, ' ', 0, 0);
         continue;
       }
 
-      int color = t->mat().fg_color;
+      char glyph = col.tile->get_glyph();
+      int color = col.tile->mat().fg_color;
       int bg_color = 0;
-      char glyph = t->get_glyph();
 
-      // --- Water / Ice rendering (with stacked-water fix) ---
-      if (t->material == MaterialType::AIR &&
-          (t->state.liquid_volume > 0.0f || t->state.frozen_volume > 0.0f)) {
-
-        if (t->state.frozen_volume > 0.0f) {
-          glyph = '*'; // Snow/Ice
-          color = 15;  // White
+      if (col.is_water) {
+        if (col.is_ice) {
+          glyph = '*';
+          color = 15;
         } else {
-          // Accumulate the total water column depth from cz downward.
-          // This fixes the bug where shallow water stacked over more water
-          // tiles rendered as blank space.
-          float total_water = t->state.liquid_volume;
-          int water_bottom = cz;
-          while (water_bottom > 0) {
-            const Tile &wb = map.get_tile(mx, my, water_bottom - 1);
-            if (wb.material == MaterialType::AIR &&
-                wb.state.liquid_volume > 0.0f) {
-              total_water += wb.state.liquid_volume;
-              water_bottom--;
-            } else {
-              break;
-            }
-          }
-
-          // Find the solid ground beneath the entire water column (for
-          // shallow rendering and shoreline detection)
-          int ground_z = water_bottom - 1;
+          // Find ground below water for shallow rendering
           const Tile *ground = nullptr;
+          int ground_z = col.surface_z - 1;
           if (ground_z >= 0) {
             ground = &map.get_tile(mx, my, ground_z);
-            if (ground->material == MaterialType::AIR)
-              ground = nullptr;
+            if (ground->material == MaterialType::AIR) ground = nullptr;
           }
 
-          // Three-tier water depth rendering:
-          //   shallow  (total < 0.4)  — show ground through tinted water
-          //   medium   (0.4 .. 1.5)   — wavy surface
-          //   deep     (> 1.5)        — dense water block
-          if (total_water < 0.4f && ground) {
-            // Shallow: ground glyph visible through water
+          float total = col.water_volume;
+          if (total < 0.4f && ground) {
             glyph = ground->get_glyph();
             color = ground->mat().fg_color;
-            // ALL shallow water gets a blue bg so it never falls through
-            // to the elevation contour code (which would make it maroon).
-            if (total_water > 0.15f) {
-              bg_color = 17; // Dark Navy tint — clearly ankle-deep
-            } else {
-              bg_color = 16; // Very dark blue hint — barely wet
-            }
-          } else if (total_water < 1.5f) {
-            // Medium depth
+            bg_color = (total > 0.15f) ? 17 : 16;
+          } else if (total < 1.5f) {
             glyph = '~';
-            color = 12;    // Light Blue
-            bg_color = 19; // Medium Blue
+            color = 12;
+            bg_color = 19;
           } else {
-            // Deep water
             glyph = '~';
-            color = 33;    // Blue glyph for deep water
-            bg_color = 25; // Deep Blue background
+            color = 33;
+            bg_color = 25;
           }
 
-          // --- Shoreline detection ---
-          // If this tile has water, check if any cardinal neighbour at the
-          // same level is dry land.  If so, mark it as a shoreline tile
-          // with a distinct glyph to clearly delineate water edges.
-          if (total_water >= 0.15f) {
-            bool is_shoreline = false;
-            static const int dx[] = {0, 0, -1, 1};
-            static const int dy[] = {-1, 1, 0, 0};
+          // Shoreline detection
+          if (total >= 0.15f) {
+            bool shore = false;
+            static const int dx[] = {0,0,-1,1}, dy[] = {-1,1,0,0};
             for (int d = 0; d < 4; ++d) {
-              int nx = mx + dx[d];
-              int ny = my + dy[d];
-              if (!map.is_in_bounds(nx, ny, z))
-                continue;
-              // Walk down at the neighbour column to find its surface
-              int nz = z;
-              const Tile *nt = &map.get_tile(nx, ny, nz);
-              while (nz > 0 && nt->material == MaterialType::AIR &&
-                     nt->state.liquid_volume <= 0.0f &&
-                     nt->state.frozen_volume <= 0.0f) {
-                nz--;
-                nt = &map.get_tile(nx, ny, nz);
-              }
-              // Neighbour is dry land (solid, no water)
-              if (nt->material != MaterialType::AIR) {
-                is_shoreline = true;
-                break;
-              }
+              int nx = mx + dx[d], ny = my + dy[d];
+              if (!map.is_in_bounds(nx, ny, z)) continue;
+              ColumnInfo nbr = compute_surface(map, nx, ny, z);
+              if (nbr.tile->material != MaterialType::AIR) { shore = true; break; }
             }
-            if (is_shoreline) {
-              glyph = ',';   // Shoreline marker — small, unobtrusive
-              color = 45;    // Cyan for coastal feel
-              bg_color = 17; // Same as shallow water — consistent blue
+            if (shore) {
+              glyph = ',';
+              color = 45;
+              bg_color = 17;
             }
           }
         }
       }
 
       if (visible) {
-        // --- Elevation contour background coloring ---
-        // Apply a subtle background gradient based on how far below the
-        // player this tile's surface is, so elevation changes are visible
-        // even on dry land. Water tiles keep their own bg_color.
+        // Elevation background only if not already set by water.
         if (bg_color == 0) {
-          int depth = z - cz;
-          if (depth <= 0) {
-            // At or above player level — wall / ledge that blocks you
-            bg_color = 52; // Dark Magenta: clearly distinct from any blue water
-          } else if (depth == 1) {
-            // Immediate floor level — where the player stands
-            bg_color = 237; // Neutral Dark Gray: walkable ground
-          } else if (depth == 2) {
-            bg_color = 235; // Slightly darker — one step down
-          } else if (depth == 3) {
-            bg_color = 234; // Darker still — noticeable drop
-          } else {
-            // Deep pit / canyon — very dark
-            bg_color = 233;
-          }
+          int depth = z - col.surface_z;
+          if (depth <= 0) bg_color = 52;
+          else if (depth == 1) bg_color = 237;
+          else if (depth == 2) bg_color = 235;
+          else if (depth == 3) bg_color = 234;
+          else bg_color = 233;
         }
-
-        // Depth Dimming: If the ground is below the player, make it dimmer
-        int depth = z - cz;
+        int depth = z - col.surface_z;
         if (depth > 0) {
-          if (color >= 8 && color <= 15) {
-            color -= 8;
-          }
-          if (depth > 2) {
-            color = std::max(232, 255 - (depth * 2));
-          }
+          if (color >= 8 && color <= 15) color -= 8;
+          if (depth > 2) color = std::max(232, 255 - (depth * 2));
         }
       } else {
-        // Explored but not currently visible: Dim Gray
         color = 237;
         bg_color = 0;
       }
