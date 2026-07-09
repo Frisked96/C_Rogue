@@ -42,6 +42,22 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
       }
 
       if (!explored) {
+        // Look UP to see if we remember a higher surface!
+        // This happens if we are at a low elevation (e.g., base of a mountain)
+        // and the interior rock at our level was never explored, but we previously
+        // explored the surface above it. We should render that remembered surface.
+        for (int ez = z + 1; ez < map.get_depth(); ++ez) {
+          if (map.is_explored(mx, my, ez)) {
+            cz = ez;
+            t = &map.get_tile(mx, my, cz);
+            explored = true;
+            visible = map.is_visible(mx, my, ez);
+            break;
+          }
+        }
+      }
+
+      if (!explored) {
         plane.set(vx, vy, ' ', 0, 0);
         continue;
       }
@@ -92,14 +108,18 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
             // Shallow: ground glyph visible through water
             glyph = ground->get_glyph();
             color = ground->mat().fg_color;
+            // ALL shallow water gets a blue bg so it never falls through
+            // to the elevation contour code (which would make it maroon).
             if (total_water > 0.15f) {
-              bg_color = 24; // Teal Blue tint (visible)
+              bg_color = 17; // Dark Navy tint — clearly ankle-deep
+            } else {
+              bg_color = 16; // Very dark blue hint — barely wet
             }
           } else if (total_water < 1.5f) {
             // Medium depth
             glyph = '~';
             color = 12;    // Light Blue
-            bg_color = 24; // Teal Blue
+            bg_color = 19; // Medium Blue
           } else {
             // Deep water
             glyph = '~';
@@ -137,8 +157,8 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
             }
             if (is_shoreline) {
               glyph = ',';   // Shoreline marker — small, unobtrusive
-              color = 45;    // Cyan/Teal for coastal feel
-              bg_color = 24; // Keep the water background
+              color = 45;    // Cyan for coastal feel
+              bg_color = 17; // Same as shallow water — consistent blue
             }
           }
         }
@@ -153,7 +173,7 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
           int depth = z - cz;
           if (depth <= 0) {
             // At or above player level — wall / ledge that blocks you
-            bg_color = 88; // Red: unmistakably a raised obstacle
+            bg_color = 52; // Dark Magenta: clearly distinct from any blue water
           } else if (depth == 1) {
             // Immediate floor level — where the player stands
             bg_color = 237; // Neutral Dark Gray: walkable ground
@@ -230,13 +250,24 @@ void WorldRenderer::render_debug(RenderPlane &plane, const Game_map &map, int z,
         t = &map.get_tile(mx, my, cz);
       }
 
-      // Check explored across column (same fix as normal renderer)
+      // Check explored across column
       bool explored = false;
       bool visible = false;
       for (int ez = z; ez >= cz; --ez) {
         if (map.is_explored(mx, my, ez)) explored = true;
         if (map.is_visible(mx, my, ez)) visible = true;
         if (explored && visible) break;
+      }
+
+      if (!explored) {
+        for (int ez = z + 1; ez < map.get_depth(); ++ez) {
+          if (map.is_explored(mx, my, ez)) {
+            cz = ez;
+            explored = true;
+            visible = map.is_visible(mx, my, ez);
+            break;
+          }
+        }
       }
 
       if (!explored) {

@@ -39,11 +39,25 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
         if (explored && visible) break;
       }
 
+      int search_top = map.get_depth() - 1;
+
+      if (!explored) {
+        // If our current z-level wasn't explored, check if we remember a higher surface
+        for (int ez = z + 1; ez < map.get_depth(); ++ez) {
+          if (map.is_explored(mx, my, ez)) {
+            cz = ez;
+            explored = true;
+            visible = map.is_visible(mx, my, ez);
+            break;
+          }
+        }
+      }
+
       if (!explored) continue;
 
       // --- Render the highest object in the visible column ---
       if (objManager) {
-        for (int oz = z; oz >= cz; --oz) {
+        for (int oz = search_top; oz >= cz; --oz) {
           if (objManager->spatial().has_any(mx, my, oz)) {
             const auto &uids = objManager->spatial().get_at(mx, my, oz);
             for (auto uid : uids) {
@@ -71,7 +85,7 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
       }
 
       // --- Render the highest entity in the visible column ---
-      for (int ez = z; ez >= cz; --ez) {
+      for (int ez = search_top; ez >= cz; --ez) {
         if (entityManager.get_spatial_grid().has_any(mx, my, ez)) {
           const auto &uids = entityManager.get_spatial_grid().get_at(mx, my, ez);
           for (auto uid : uids) {
