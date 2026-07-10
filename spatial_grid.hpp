@@ -136,7 +136,6 @@ public:
     nc.heads[nlocal] = alloc_node(id, nc.heads[nlocal]);
   }
 
-
   std::vector<IDType> get_at(int x, int y, int z) const {
     std::vector<IDType> out;
     const Chunk *c = find_chunk(x, y, z);
