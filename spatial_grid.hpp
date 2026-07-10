@@ -136,21 +136,7 @@ public:
     nc.heads[nlocal] = alloc_node(id, nc.heads[nlocal]);
   }
 
-  // Returns by value rather than by reference. The task description
-  // explicitly allows changing the return type when useful, and this is
-  // the safest option: every call gets its own independent vector, so
-  // there's no aliasing hazard no matter how the caller nests, holds, or
-  // compares results against each other.
-  //
-  // Trade-off: unlike add/remove/move, this does allocate on the heap
-  // for any non-empty cell (an empty cell returns an empty, non-allocating
-  // vector). get_at() is a read/query path, typically called far less
-  // often than add/move during simulation, so this is a reasonable price
-  // for eliminating an entire class of use-after-overwrite bugs. If a
-  // caller needs a zero-allocation query in a hot loop, prefer has_any()
-  // where possible, or add a callback-based "for_each_at(x,y,z,fn)"
-  // overload that walks the linked list in place without materializing
-  // a vector at all.
+
   std::vector<IDType> get_at(int x, int y, int z) const {
     std::vector<IDType> out;
     const Chunk *c = find_chunk(x, y, z);
