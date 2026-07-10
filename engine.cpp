@@ -1,11 +1,4 @@
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
-#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
-#endif
-#endif
+
 
 #include "engine.hpp"
 #include "map_gen/visibility.hpp"
@@ -16,17 +9,7 @@
 
 Engine::Engine(int width, int height) : is_running(true) {
 
-#ifdef _WIN32
-  // Enable ANSI escape codes on Windows
-  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-  if (hOut != INVALID_HANDLE_VALUE) {
-    DWORD dwMode = 0;
-    if (GetConsoleMode(hOut, &dwMode)) {
-      dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-      SetConsoleMode(hOut, dwMode);
-    }
-  }
-#endif
+
 
   // Initialize map with a random seed
   std::srand(static_cast<unsigned int>(std::time(nullptr)));
@@ -80,10 +63,7 @@ Engine::Engine(int width, int height) : is_running(true) {
   std::cout << "\033[2J\033[1;1H";
 }
 
-Engine::~Engine() {
-  // Show cursor again and reset color/formatting
-  std::cout << "\033[?25h\033[0m\n" << std::flush;
-}
+Engine::~Engine() {}
 
 void Engine::run() {
   while (is_running) {

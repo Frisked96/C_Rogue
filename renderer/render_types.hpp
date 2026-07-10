@@ -29,37 +29,34 @@ public:
     RenderPlane() : width_(0), height_(0) {}
     RenderPlane(int w, int h)
         : width_(w), height_(h),
-          cells_(static_cast<size_t>(h),
-                 std::vector<Cell>(static_cast<size_t>(w))) {}
+          cells_(static_cast<size_t>(w) * static_cast<size_t>(h)) {}
 
     void resize(int w, int h) {
         width_ = w;
         height_ = h;
-        cells_.assign(static_cast<size_t>(h),
-                      std::vector<Cell>(static_cast<size_t>(w)));
+        cells_.assign(static_cast<size_t>(w) * static_cast<size_t>(h), Cell{});
     }
 
     // Reset every cell to transparent with default colours.
     void clear() {
-        for (auto& row : cells_)
-            for (auto& cell : row)
-                cell = {};   // default‑constructed Cell: transparent, U' ', fg=7, bg=0
+        for (auto& cell : cells_)
+            cell = {};   // default‑constructed Cell: transparent, U' ', fg=7, bg=0
     }
 
     // Set a cell. Non‑transparent by default (transparent = false).
     void set(int x, int y, char32_t glyph, int fg = 7, int bg = 0) {
         if (x >= 0 && x < width_ && y >= 0 && y < height_)
-            cells_[static_cast<size_t>(y)][static_cast<size_t>(x)] =
+            cells_[static_cast<size_t>(y) * width_ + x] =
                 { glyph, fg, bg, false };  // explicit transparency flag = false
     }
 
-    const Cell& get(int x, int y) const { return cells_[y][x]; }
-    Cell&       get(int x, int y)       { return cells_[y][x]; }
+    const Cell& get(int x, int y) const { return cells_[static_cast<size_t>(y) * width_ + x]; }
+    Cell&       get(int x, int y)       { return cells_[static_cast<size_t>(y) * width_ + x]; }
 
     int width()  const noexcept { return width_; }
     int height() const noexcept { return height_; }
 
 private:
     int width_, height_;
-    std::vector<std::vector<Cell>> cells_;
-};
+    std::vector<Cell> cells_;
+};

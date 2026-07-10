@@ -43,7 +43,7 @@ private:
     static void restore_console();
 
     // Convert a codepoint to a UTF‑8 byte sequence.
-    static std::string to_utf8(char32_t cp);
+    static void to_utf8(char32_t cp, std::string& out);
 
     // Append ANSI escape codes + glyph for a single cell.
     void emit_cell(std::string& out, const Cell& cell, int& cur_fg, int& cur_bg);
