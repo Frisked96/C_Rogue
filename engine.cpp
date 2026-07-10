@@ -9,8 +9,6 @@
 
 Engine::Engine(int width, int height) : is_running(true) {
 
-
-
   // Initialize map with a random seed
   std::srand(static_cast<unsigned int>(std::time(nullptr)));
   int seed = std::rand();

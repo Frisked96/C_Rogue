@@ -18,14 +18,14 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
       int mx = start_x + vx;
       int my = start_y + vy;
 
-      if (!map.is_in_bounds(mx, my, z)) continue;
+      if (!map.is_in_bounds(mx, my, z))
+        continue;
 
       // Raycast: find the surface z for this column (same as world_renderer)
       int cz = z;
       const Tile *t = &map.get_tile(mx, my, cz);
       while (cz > 0 && t->material == MaterialType::AIR &&
-             t->state.liquid_volume <= 0.0f &&
-             t->state.frozen_volume <= 0.0f) {
+             t->state.liquid_volume <= 0.0f && t->state.frozen_volume <= 0.0f) {
         cz--;
         t = &map.get_tile(mx, my, cz);
       }
@@ -34,15 +34,19 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
       bool explored = false;
       bool visible = false;
       for (int ez = z; ez >= cz; --ez) {
-        if (map.is_explored(mx, my, ez)) explored = true;
-        if (map.is_visible(mx, my, ez)) visible = true;
-        if (explored && visible) break;
+        if (map.is_explored(mx, my, ez))
+          explored = true;
+        if (map.is_visible(mx, my, ez))
+          visible = true;
+        if (explored && visible)
+          break;
       }
 
       int search_top = map.get_depth() - 1;
 
       if (!explored) {
-        // If our current z-level wasn't explored, check if we remember a higher surface
+        // If our current z-level wasn't explored, check if we remember a higher
+        // surface
         for (int ez = z + 1; ez < map.get_depth(); ++ez) {
           if (map.is_explored(mx, my, ez)) {
             cz = ez;
@@ -53,7 +57,8 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
         }
       }
 
-      if (!explored) continue;
+      if (!explored)
+        continue;
 
       // --- Render the highest object in the visible column ---
       if (objManager) {
@@ -62,7 +67,8 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
             const auto &uids = objManager->spatial().get_at(mx, my, oz);
             for (auto uid : uids) {
               auto *obj = objManager->get(uid);
-              if (!obj) continue;
+              if (!obj)
+                continue;
               const auto &proto = objManager->proto_db().get(obj->prototype_id);
 
               int fg = proto.fg_color;
@@ -73,8 +79,10 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
                 // Depth-dim objects below the player
                 int depth = z - oz;
                 if (depth > 0) {
-                  if (fg >= 8 && fg <= 15) fg -= 8;
-                  if (depth > 2) fg = std::max(232, 255 - (depth * 2));
+                  if (fg >= 8 && fg <= 15)
+                    fg -= 8;
+                  if (depth > 2)
+                    fg = std::max(232, 255 - (depth * 2));
                 }
               }
               plane.set(vx, vy, proto.glyph, fg, 0);
@@ -87,16 +95,20 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
       // --- Render the highest entity in the visible column ---
       for (int ez = search_top; ez >= cz; --ez) {
         if (entityManager.get_spatial_grid().has_any(mx, my, ez)) {
-          const auto &uids = entityManager.get_spatial_grid().get_at(mx, my, ez);
+          const auto &uids =
+              entityManager.get_spatial_grid().get_at(mx, my, ez);
           for (auto uid : uids) {
             auto *entity = entityManager.get(uid);
-            if (!entity) continue;
+            if (!entity)
+              continue;
             if (visible || entity->type == EntityType::PLAYER) {
               int fg = entity->props().fg_color | 8;
               int depth = z - ez;
               if (depth > 0 && entity->type != EntityType::PLAYER) {
-                if (fg >= 8 && fg <= 15) fg -= 8;
-                if (depth > 2) fg = std::max(232, 255 - (depth * 2));
+                if (fg >= 8 && fg <= 15)
+                  fg -= 8;
+                if (depth > 2)
+                  fg = std::max(232, 255 - (depth * 2));
               }
               plane.set(vx, vy, entity->props().glyph, fg, 0);
               goto next_cell;
@@ -105,7 +117,7 @@ void EntityRenderer::render(RenderPlane &plane, EntityManager &entityManager,
         }
       }
 
-      next_cell:;
+    next_cell:;
     }
   }
 }

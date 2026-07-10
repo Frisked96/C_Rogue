@@ -71,23 +71,26 @@ private:
 
 public:
   void add(IDType id, int x, int y, int z) {
-    Chunk &c = chunks_[make_chunk_key(chunk_coord(x), chunk_coord(y),
-                                       chunk_coord(z))];
+    Chunk &c =
+        chunks_[make_chunk_key(chunk_coord(x), chunk_coord(y), chunk_coord(z))];
     uint32_t local = local_index(x, y, z);
     c.heads[local] = alloc_node(id, c.heads[local]);
   }
 
   void remove(IDType id, int x, int y, int z) {
     Chunk *c = find_chunk(x, y, z);
-    if (!c) return;
+    if (!c)
+      return;
     uint32_t local = local_index(x, y, z);
     uint32_t cur = c->heads[local];
     uint32_t prev = kNull;
     while (cur != kNull) {
       if (pool_[cur].id == id) {
         uint32_t next = pool_[cur].next;
-        if (prev == kNull) c->heads[local] = next;
-        else pool_[prev].next = next;
+        if (prev == kNull)
+          c->heads[local] = next;
+        else
+          pool_[prev].next = next;
         free_node(cur);
         return;
       }
@@ -97,14 +100,15 @@ public:
   }
 
   void move(IDType id, int ox, int oy, int oz, int nx, int ny, int nz) {
-    uint64_t okey = make_chunk_key(chunk_coord(ox), chunk_coord(oy),
-                                    chunk_coord(oz));
-    uint64_t nkey = make_chunk_key(chunk_coord(nx), chunk_coord(ny),
-                                    chunk_coord(nz));
+    uint64_t okey =
+        make_chunk_key(chunk_coord(ox), chunk_coord(oy), chunk_coord(oz));
+    uint64_t nkey =
+        make_chunk_key(chunk_coord(nx), chunk_coord(ny), chunk_coord(nz));
     uint32_t olocal = local_index(ox, oy, oz);
     uint32_t nlocal = local_index(nx, ny, nz);
 
-    if (okey == nkey && olocal == nlocal) return;
+    if (okey == nkey && olocal == nlocal)
+      return;
 
     auto oit = chunks_.find(okey);
     if (oit != chunks_.end()) {
@@ -114,8 +118,10 @@ public:
       while (cur != kNull) {
         if (pool_[cur].id == id) {
           uint32_t next = pool_[cur].next;
-          if (prev == kNull) oc.heads[olocal] = next;
-          else pool_[prev].next = next;
+          if (prev == kNull)
+            oc.heads[olocal] = next;
+          else
+            pool_[prev].next = next;
 
           Chunk &nc = chunks_[nkey];
           pool_[cur].next = nc.heads[nlocal];

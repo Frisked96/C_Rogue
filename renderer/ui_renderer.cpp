@@ -56,8 +56,7 @@ void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
               << "\033[K\n";
 
     // Message Log
-    std::cout << "\033[1;33mLog: " << msg
-              << "\033[0m\033[K\n";
+    std::cout << "\033[1;33mLog: " << msg << "\033[0m\033[K\n";
 
     // Simple cardinal surroundings (Compass)
     auto get_alt_diff = [&](int dx, int dy) -> std::string {
@@ -81,8 +80,9 @@ void UIRenderer::render_normal(const Entity *player, ObjectManager *objManager,
               << "] [S:" << get_alt_diff(0, 1) << "] [W:" << get_alt_diff(-1, 0)
               << "] [E:" << get_alt_diff(1, 0) << "]\033[K\n";
   }
-  std::cout << "\033[0;32m--------------------------------------------------------"
-               "\033[0m\033[K\n";
+  std::cout
+      << "\033[0;32m--------------------------------------------------------"
+         "\033[0m\033[K\n";
   // Erase everything below the HUD so leftover lines from debug mode
   // (which prints more rows) are cleaned up when switching back.
   std::cout << "\033[J";
@@ -244,11 +244,11 @@ void UIRenderer::render_debug(const Entity *player, ObjectManager *objManager,
             << "\033[0m\033[K\n";
 
   // --- Log ---
-  std::cout << "\033[1;33mLog: " << msg
-            << "\033[0m\033[K\n";
+  std::cout << "\033[1;33mLog: " << msg << "\033[0m\033[K\n";
 
   // --- Separator ---
-  std::cout << "\033[0;32m[DEBUG]--------------------------------------------------------"
+  std::cout << "\033[0;32m[DEBUG]----------------------------------------------"
+               "----------"
                "\033[0m\033[K\n";
   // Erase everything below so switching to normal mode cleans up
   std::cout << "\033[J";

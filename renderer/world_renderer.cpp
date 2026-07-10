@@ -2,47 +2,48 @@
 #include <algorithm>
 
 namespace {
-  struct ColumnInfo {
-    int surface_z;        // first non‑air solid (or water/ice) below z0
-    const Tile* tile;     // pointer to that tile
-    float water_volume;   // total water in column from z0 down to ground
-    bool is_water;        // top layer is water or ice
-    bool is_ice;          // top layer is ice
-  };
+struct ColumnInfo {
+  int surface_z;      // first non‑air solid (or water/ice) below z0
+  const Tile *tile;   // pointer to that tile
+  float water_volume; // total water in column from z0 down to ground
+  bool is_water;      // top layer is water or ice
+  bool is_ice;        // top layer is ice
+};
 
-  // Compute the surface column for (mx,my) starting from z0.
-  // Returns info about what would be rendered.
-  ColumnInfo compute_surface(const Game_map &map, int mx, int my, int z0) {
-    ColumnInfo ci{};
-    int cz = z0;
-    const Tile *t = &map.get_tile(mx, my, cz);
-    // look down through air / water / ice
-    while (cz > 0 && t->material == MaterialType::AIR) {
-      cz--;
-      t = &map.get_tile(mx, my, cz);
-    }
-    ci.surface_z = cz;
-    ci.tile = t;
-
-    // Compute total water in column if top is water.
-    if (t->material == MaterialType::AIR &&
-        (t->state.liquid_volume > 0.0f || t->state.frozen_volume > 0.0f)) {
-      ci.is_water = true;
-      ci.is_ice = (t->state.frozen_volume > 0.0f);
-      float total = t->state.liquid_volume;
-      int wb = cz;
-      while (wb > 0) {
-        const Tile &wt = map.get_tile(mx, my, wb - 1);
-        if (wt.material == MaterialType::AIR && wt.state.liquid_volume > 0.0f) {
-          total += wt.state.liquid_volume;
-          wb--;
-        } else break;
-      }
-      ci.water_volume = total;
-    }
-    return ci;
+// Compute the surface column for (mx,my) starting from z0.
+// Returns info about what would be rendered.
+ColumnInfo compute_surface(const Game_map &map, int mx, int my, int z0) {
+  ColumnInfo ci{};
+  int cz = z0;
+  const Tile *t = &map.get_tile(mx, my, cz);
+  // look down through air / water / ice
+  while (cz > 0 && t->material == MaterialType::AIR) {
+    cz--;
+    t = &map.get_tile(mx, my, cz);
   }
+  ci.surface_z = cz;
+  ci.tile = t;
+
+  // Compute total water in column if top is water.
+  if (t->material == MaterialType::AIR &&
+      (t->state.liquid_volume > 0.0f || t->state.frozen_volume > 0.0f)) {
+    ci.is_water = true;
+    ci.is_ice = (t->state.frozen_volume > 0.0f);
+    float total = t->state.liquid_volume;
+    int wb = cz;
+    while (wb > 0) {
+      const Tile &wt = map.get_tile(mx, my, wb - 1);
+      if (wt.material == MaterialType::AIR && wt.state.liquid_volume > 0.0f) {
+        total += wt.state.liquid_volume;
+        wb--;
+      } else
+        break;
+    }
+    ci.water_volume = total;
+  }
+  return ci;
 }
+} // namespace
 
 void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
                            int cam_x, int cam_y) {
@@ -67,9 +68,12 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
       // Explored/visible check
       bool explored = false, visible = false;
       for (int ez = z; ez >= col.surface_z; --ez) {
-        if (map.is_explored(mx, my, ez)) explored = true;
-        if (map.is_visible(mx, my, ez)) visible = true;
-        if (explored && visible) break;
+        if (map.is_explored(mx, my, ez))
+          explored = true;
+        if (map.is_visible(mx, my, ez))
+          visible = true;
+        if (explored && visible)
+          break;
       }
       if (!explored) {
         for (int ez = z + 1; ez < map.get_depth(); ++ez) {
@@ -100,7 +104,8 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
           int ground_z = col.surface_z - 1;
           if (ground_z >= 0) {
             ground = &map.get_tile(mx, my, ground_z);
-            if (ground->material == MaterialType::AIR) ground = nullptr;
+            if (ground->material == MaterialType::AIR)
+              ground = nullptr;
           }
 
           float total = col.water_volume;
@@ -121,12 +126,16 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
           // Shoreline detection
           if (total >= 0.15f) {
             bool shore = false;
-            static const int dx[] = {0,0,-1,1}, dy[] = {-1,1,0,0};
+            static const int dx[] = {0, 0, -1, 1}, dy[] = {-1, 1, 0, 0};
             for (int d = 0; d < 4; ++d) {
               int nx = mx + dx[d], ny = my + dy[d];
-              if (!map.is_in_bounds(nx, ny, z)) continue;
+              if (!map.is_in_bounds(nx, ny, z))
+                continue;
               ColumnInfo nbr = compute_surface(map, nx, ny, z);
-              if (nbr.tile->material != MaterialType::AIR) { shore = true; break; }
+              if (nbr.tile->material != MaterialType::AIR) {
+                shore = true;
+                break;
+              }
             }
             if (shore) {
               glyph = ',';
@@ -141,16 +150,23 @@ void WorldRenderer::render(RenderPlane &plane, const Game_map &map, int z,
         // Elevation background only if not already set by water.
         if (bg_color == 0) {
           int depth = z - col.surface_z;
-          if (depth <= 0) bg_color = 52;
-          else if (depth == 1) bg_color = 237;
-          else if (depth == 2) bg_color = 235;
-          else if (depth == 3) bg_color = 234;
-          else bg_color = 233;
+          if (depth <= 0)
+            bg_color = 52;
+          else if (depth == 1)
+            bg_color = 237;
+          else if (depth == 2)
+            bg_color = 235;
+          else if (depth == 3)
+            bg_color = 234;
+          else
+            bg_color = 233;
         }
         int depth = z - col.surface_z;
         if (depth > 0) {
-          if (color >= 8 && color <= 15) color -= 8;
-          if (depth > 2) color = std::max(232, 255 - (depth * 2));
+          if (color >= 8 && color <= 15)
+            color -= 8;
+          if (depth > 2)
+            color = std::max(232, 255 - (depth * 2));
         }
       } else {
         color = 237;
@@ -208,9 +224,12 @@ void WorldRenderer::render_debug(RenderPlane &plane, const Game_map &map, int z,
       bool explored = false;
       bool visible = false;
       for (int ez = z; ez >= cz; --ez) {
-        if (map.is_explored(mx, my, ez)) explored = true;
-        if (map.is_visible(mx, my, ez)) visible = true;
-        if (explored && visible) break;
+        if (map.is_explored(mx, my, ez))
+          explored = true;
+        if (map.is_visible(mx, my, ez))
+          visible = true;
+        if (explored && visible)
+          break;
       }
 
       if (!explored) {
