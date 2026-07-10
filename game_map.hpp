@@ -2,6 +2,7 @@
 
 #include "tile.hpp"
 #include <cstdint>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -73,6 +74,9 @@ public:
   void set_visible(int x, int y, int z, bool visible);
   bool is_visible(int x, int y, int z) const;
   bool is_explored(int x, int y, int z) const;
+
+  // entity spawning
+  std::tuple<int, int, int> find_valid_spawn(int start_x, int start_y, ObjectManager* obj_mgr) const;
 
 private:
   int width, height, depth;

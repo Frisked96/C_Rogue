@@ -27,34 +27,9 @@ Engine::Engine(int width, int height) : is_running(true) {
   // Initialize input handler
   input_handler = std::make_unique<InputHandler>();
 
-  // Find a valid spawn point for the player (start from top and go down until
-  // we hit ground)
-  int spawn_x = 50;
-  int spawn_y = 50;
-  auto is_blocked_for_spawn = [&](int cx, int cy, int cz) {
-    if (map->get_tile(cx, cy, cz).mat().is_solid)
-      return true;
-    if (object_manager->spatial().has_any(cx, cy, cz)) {
-      for (auto uid : object_manager->spatial().get_at(cx, cy, cz)) {
-        auto *obj = object_manager->get(uid);
-        if (obj &&
-            object_manager->proto_db().get(obj->prototype_id).is_blocking)
-          return true;
-      }
-    }
-    return false;
-  };
-
-  int spawn_z = 99;
-  while (spawn_z > 0 && !is_blocked_for_spawn(spawn_x, spawn_y, spawn_z)) {
-    spawn_z--;
-  }
-  // Spawn 1 tile above ground (in the air)
-  if (spawn_z < 99)
-    spawn_z++;
-
-  player_id =
-      entityManager.spawn(EntityType::PLAYER, spawn_x, spawn_y, spawn_z);
+  // Find a valid spawn point for the player
+  auto [spawn_x, spawn_y, spawn_z] = map->find_valid_spawn(50, 50, object_manager.get());
+  player_id = entityManager.spawn(EntityType::PLAYER, spawn_x, spawn_y, spawn_z);
   last_msg = "Welcome to C_Rogue! Explore the mountains.";
 
   // Perform an initial full screen clear
@@ -67,6 +42,7 @@ void Engine::run() {
   while (is_running) {
     render();
     handle_input();
+    physics_system.update(entityManager, *map, *object_manager, last_msg);
     // Update physiological systems
     entityManager.update(0.1f); // 100ms ticks
   }
@@ -130,130 +106,10 @@ void Engine::handle_input() {
   if (dx != 0 || dy != 0 || dz != 0) {
     Entity *player = entityManager.get(player_id);
     if (player) {
-      int nx = player->state.x + dx;
-      int ny = player->state.y + dy;
-      int nz = player->state.z + dz;
-
-      // Surface-following logic
-      bool is_blocked_base = entityManager.is_blocked(nx, ny, nz, *map);
-      if (!is_blocked_base && object_manager->spatial().has_any(nx, ny, nz)) {
-        for (auto uid : object_manager->spatial().get_at(nx, ny, nz)) {
-          auto *obj = object_manager->get(uid);
-          if (obj &&
-              object_manager->proto_db().get(obj->prototype_id).is_blocking) {
-            is_blocked_base = true;
-            break;
-          }
-        }
-      }
-
-      if (is_blocked_base) {
-        // Attempt to climb (up to 2m)
-        bool is_blocked_z1 = entityManager.is_blocked(nx, ny, nz + 1, *map);
-        if (!is_blocked_z1 &&
-            object_manager->spatial().has_any(nx, ny, nz + 1)) {
-          for (auto uid : object_manager->spatial().get_at(nx, ny, nz + 1)) {
-            auto *obj = object_manager->get(uid);
-            if (obj &&
-                object_manager->proto_db().get(obj->prototype_id).is_blocking) {
-              is_blocked_z1 = true;
-              break;
-            }
-          }
-        }
-        if (!is_blocked_z1) {
-          nz++;
-          last_msg = "You climb up.";
-        } else {
-          bool is_blocked_z2 = entityManager.is_blocked(nx, ny, nz + 2, *map);
-          if (!is_blocked_z2 &&
-              object_manager->spatial().has_any(nx, ny, nz + 2)) {
-            for (auto uid : object_manager->spatial().get_at(nx, ny, nz + 2)) {
-              auto *obj = object_manager->get(uid);
-              if (obj && object_manager->proto_db()
-                             .get(obj->prototype_id)
-                             .is_blocking) {
-                is_blocked_z2 = true;
-                break;
-              }
-            }
-          }
-          if (!is_blocked_z2) {
-            nz += 2;
-            last_msg = "You scramble up the ridge.";
-          } else {
-            last_msg = "Blocked by " + map->get_tile(nx, ny, nz).mat().name +
-                       " or object.";
-            return;
-          }
-        }
-      } else {
-        // Gravity / Descending logic
-        int start_z = nz;
-        auto is_blocked_at = [&](int cx, int cy, int cz) {
-          if (entityManager.is_blocked(cx, cy, cz, *map))
-            return true;
-          if (object_manager->spatial().has_any(cx, cy, cz)) {
-            for (auto uid : object_manager->spatial().get_at(cx, cy, cz)) {
-              auto *obj = object_manager->get(uid);
-              if (obj &&
-                  object_manager->proto_db().get(obj->prototype_id).is_blocking)
-                return true;
-            }
-          }
-          return false;
-        };
-
-        while (nz > 0 && !is_blocked_at(nx, ny, nz) &&
-               !is_blocked_at(nx, ny, nz - 1)) {
-
-          // Buoyancy: Stop falling if we hit deep enough water
-          const Tile &current_tile = map->get_tile(nx, ny, nz);
-          if (current_tile.material == MaterialType::AIR &&
-              current_tile.state.liquid_volume >= 0.4f) {
-            break;
-          }
-          nz--;
-        }
-
-        if (nz < start_z) {
-          last_msg = (start_z - nz > 1) ? "You scramble down." : "You descend.";
-        } else if (map->get_tile(nx, ny, nz).material == MaterialType::AIR &&
-                   map->get_tile(nx, ny, nz).state.liquid_volume > 0.0f) {
-          float m = map->get_tile(nx, ny, nz).state.liquid_volume;
-          if (m >= 0.8f)
-            last_msg = "You are swimming.";
-          else if (m >= 0.4f)
-            last_msg = "You wade through waist-deep water.";
-          else
-            last_msg = "You splash through ankle-deep water.";
-        } else {
-          last_msg = "You move forward.";
-        }
-      }
-
-      auto is_blocked_at_final = [&](int cx, int cy, int cz) {
-        if (entityManager.is_blocked(cx, cy, cz, *map))
-          return true;
-        if (object_manager->spatial().has_any(cx, cy, cz)) {
-          for (auto uid : object_manager->spatial().get_at(cx, cy, cz)) {
-            auto *obj = object_manager->get(uid);
-            if (obj &&
-                object_manager->proto_db().get(obj->prototype_id).is_blocking)
-              return true;
-          }
-        }
-        return false;
-      };
-
-      if (!is_blocked_at_final(nx, ny, nz)) {
-        entityManager.get_spatial_grid().move(player_id, player->state.x,
-                                              player->state.y, player->state.z,
-                                              nx, ny, nz);
-        player->state.x = nx;
-        player->state.y = ny;
-        player->state.z = nz;
-      }
+      player->state.has_intent_to_move = true;
+      player->state.intent_dx = dx;
+      player->state.intent_dy = dy;
+      player->state.intent_dz = dz;
     }
   }
 }

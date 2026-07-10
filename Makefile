@@ -6,6 +6,7 @@ FORMATTER = "C:\Program Files\LLVM\bin\clang-format.exe"
 SRCS = main.cpp \
        engine.cpp \
        game_map.cpp \
+       physics_system.cpp \
        renderer/renderer.cpp \
        renderer/render_backend.cpp \
        renderer/compositor.cpp \

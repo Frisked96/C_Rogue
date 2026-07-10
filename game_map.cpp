@@ -1,6 +1,7 @@
 #include "game_map.hpp"
 #include "map_gen/map_generator.hpp"
 #include "map_gen/simulator.hpp"
+#include "Object/object_manager.hpp"
 #include <algorithm>
 
 Game_map::Game_map(int w, int h, int d)
@@ -140,4 +141,32 @@ void Game_map::generate(int seed, ObjectPrototypeDB *proto_db,
                         ObjectManager *obj_mgr) {
   MapGenerator gen;
   gen.generate(*this, seed, proto_db, obj_mgr);
+}
+
+std::tuple<int, int, int> Game_map::find_valid_spawn(int start_x, int start_y, ObjectManager* obj_mgr) const {
+  int spawn_x = start_x;
+  int spawn_y = start_y;
+  auto is_blocked_for_spawn = [&](int cx, int cy, int cz) {
+    if (get_tile(cx, cy, cz).mat().is_solid)
+      return true;
+    if (obj_mgr && obj_mgr->spatial().has_any(cx, cy, cz)) {
+      for (auto uid : obj_mgr->spatial().get_at(cx, cy, cz)) {
+        auto *obj = obj_mgr->get(uid);
+        if (obj &&
+            obj_mgr->proto_db().get(obj->prototype_id).is_blocking)
+          return true;
+      }
+    }
+    return false;
+  };
+
+  int spawn_z = depth - 1;
+  while (spawn_z > 0 && !is_blocked_for_spawn(spawn_x, spawn_y, spawn_z)) {
+    spawn_z--;
+  }
+  // Spawn 1 tile above ground (in the air)
+  if (spawn_z < depth - 1)
+    spawn_z++;
+
+  return {spawn_x, spawn_y, spawn_z};
 }

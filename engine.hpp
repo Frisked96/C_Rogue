@@ -6,6 +6,7 @@
 #include "Object/object_prototype_db.hpp"
 #include "game_map.hpp"
 #include "input_handler.hpp"
+#include "physics_system.hpp"
 #include "renderer/renderer.hpp"
 #include <memory>
 
@@ -18,7 +19,8 @@ private:
   std::unique_ptr<Renderer> renderer;
   std::unique_ptr<InputHandler> input_handler;
 
-  // Simplified Entity System
+  // Systems
+  PhysicsSystem physics_system;
   EntityManager entityManager;
   EntityID player_id;
 

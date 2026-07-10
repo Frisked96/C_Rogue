@@ -31,6 +31,12 @@ struct EntityState {
   struct {
     bool active = false;
   } camera;
+
+  // --- Movement Intent ---
+  bool has_intent_to_move = false;
+  int intent_dx = 0;
+  int intent_dy = 0;
+  int intent_dz = 0;
 };
 
 struct Entity {
