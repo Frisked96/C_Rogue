@@ -175,6 +175,7 @@ void ClimateSystem::init(int width, int height, const Params &params) {
   params_ = params;
   cells_.assign((std::size_t)w_ * h_, ClimateCell{});
   advect_delta_.assign((std::size_t)w_ * h_, 0.0f);
+  advect_seed_delta_.assign((std::size_t)w_ * h_, 0.0f);
   precip_buf_.assign((std::size_t)w_ * h_, 0.0f);
 }
 
@@ -283,6 +284,7 @@ void ClimateSystem::update_temperature(const std::vector<int> &ground_z,
 
 void ClimateSystem::advect() {
   std::fill(advect_delta_.begin(), advect_delta_.end(), 0.0f);
+  std::fill(advect_seed_delta_.begin(), advect_seed_delta_.end(), 0.0f);
 
   // Gather-based advection: pulls mass from upwind neighbors.
   // This is perfectly thread-safe as cells only write to their own index.
@@ -297,16 +299,25 @@ void ClimateSystem::advect() {
             std::clamp(speed * params_.wind_advect_scale, 0.0f, 0.9f);
 
         float out_x = 0.0f, out_y = 0.0f;
-        if (c.vapor > 0.0f && move_frac > 0.0f) {
+        float seed_out_x = 0.0f, seed_out_y = 0.0f;
+        
+        if (move_frac > 0.0f) {
           float au = std::fabs(u), av = std::fabs(v);
           float denom = au + av;
           if (denom >= 1e-6f) {
-            out_x = c.vapor * move_frac * (au / denom);
-            out_y = c.vapor * move_frac * (av / denom);
+            if (c.vapor > 0.0f) {
+              out_x = c.vapor * move_frac * (au / denom);
+              out_y = c.vapor * move_frac * (av / denom);
+            }
+            if (c.seed_factor > 0.0f) {
+              seed_out_x = c.seed_factor * move_frac * (au / denom);
+              seed_out_y = c.seed_factor * move_frac * (av / denom);
+            }
           }
         }
 
         float in_x = 0.0f, in_y = 0.0f;
+        float seed_in_x = 0.0f, seed_in_y = 0.0f;
 
         // Inflow from X neighbors
         if (x > 0) {
@@ -318,8 +329,9 @@ void ClimateSystem::advect() {
                 std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
-            if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
-              in_x += p.vapor * p_move * (p_au / p_denom);
+            if (p_move > 0.0f && p_denom >= 1e-6f) {
+              if (p.vapor > 0.0f) in_x += p.vapor * p_move * (p_au / p_denom);
+              if (p.seed_factor > 0.0f) seed_in_x += p.seed_factor * p_move * (p_au / p_denom);
             }
           }
         }
@@ -332,8 +344,9 @@ void ClimateSystem::advect() {
                 std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
-            if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
-              in_x += p.vapor * p_move * (p_au / p_denom);
+            if (p_move > 0.0f && p_denom >= 1e-6f) {
+              if (p.vapor > 0.0f) in_x += p.vapor * p_move * (p_au / p_denom);
+              if (p.seed_factor > 0.0f) seed_in_x += p.seed_factor * p_move * (p_au / p_denom);
             }
           }
         }
@@ -348,8 +361,9 @@ void ClimateSystem::advect() {
                 std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
-            if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
-              in_y += p.vapor * p_move * (p_av / p_denom);
+            if (p_move > 0.0f && p_denom >= 1e-6f) {
+              if (p.vapor > 0.0f) in_y += p.vapor * p_move * (p_av / p_denom);
+              if (p.seed_factor > 0.0f) seed_in_y += p.seed_factor * p_move * (p_av / p_denom);
             }
           }
         }
@@ -362,13 +376,15 @@ void ClimateSystem::advect() {
                 std::clamp(p_speed * params_.wind_advect_scale, 0.0f, 0.9f);
             float p_au = std::fabs(p.wind_u), p_av = std::fabs(p.wind_v);
             float p_denom = p_au + p_av;
-            if (p.vapor > 0.0f && p_move > 0.0f && p_denom >= 1e-6f) {
-              in_y += p.vapor * p_move * (p_av / p_denom);
+            if (p_move > 0.0f && p_denom >= 1e-6f) {
+              if (p.vapor > 0.0f) in_y += p.vapor * p_move * (p_av / p_denom);
+              if (p.seed_factor > 0.0f) seed_in_y += p.seed_factor * p_move * (p_av / p_denom);
             }
           }
         }
 
         advect_delta_[idx(x, y)] = c.vapor + in_x + in_y - out_x - out_y;
+        advect_seed_delta_[idx(x, y)] = c.seed_factor + seed_in_x + seed_in_y - seed_out_x - seed_out_y;
       }
     }
   });
@@ -376,9 +392,11 @@ void ClimateSystem::advect() {
   // Apply advection delta
   for (std::size_t i = 0; i < cells_.size(); ++i) {
     cells_[i].vapor = std::max(0.0f, advect_delta_[i]);
+    cells_[i].seed_factor = std::max(0.0f, advect_seed_delta_[i]);
   }
 
   // Windward-boundary inflow (serial, very cheap)
+  // Seeds don't inflow from boundaries
   for (int y = 0; y < h_; ++y) {
     ClimateCell &left = cells_[idx(0, y)];
     if (left.wind_u > 0.0f)
@@ -401,8 +419,9 @@ void ClimateSystem::advect() {
       top.vapor +=
           params_.boundary_relax * (params_.ocean_humidity - top.vapor);
   }
-  for (auto &c : cells_)
+  for (auto &c : cells_) {
     c.vapor = std::max(0.0f, c.vapor);
+  }
 }
 
 const std::vector<float> &ClimateSystem::step_precipitation(NoiseGen &noise,

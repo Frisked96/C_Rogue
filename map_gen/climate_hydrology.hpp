@@ -204,8 +204,8 @@ struct ClimateCell {
   float wind_v = 0.0f; // "tiles moved per substep" in y, signed
   float vapor = 0.0f;  // column water vapour + cloud water (metres-equivalent)
   float temperature = 288.15f; // near-surface air temperature (K)
-  float upslope =
-      0.0f; // cached dot(wind, elevation gradient); >0 = ascending/windward
+  float upslope = 0.0f; // cached dot(wind, elevation gradient); >0 = ascending/windward
+  float seed_factor = 0.0f; // airborne tree seeds
 };
 
 class ClimateSystem {
@@ -241,6 +241,13 @@ public:
   // Evapotranspiration step adds water back into the local vapor field.
   void add_vapor(int x, int y, float amount);
 
+  // Add airborne seeds.
+  void add_seed_factor(int x, int y, float amount) {
+    if (x >= 0 && x < w_ && y >= 0 && y < h_) {
+      cells_[idx(x, y)].seed_factor += amount;
+    }
+  }
+
   int width() const { return w_; }
   int height() const { return h_; }
   const ClimateCell &at(int x, int y) const { return cells_[idx(x, y)]; }
@@ -262,6 +269,7 @@ private:
 
   // Persistent scratch buffers (avoids per-substep heap allocations)
   std::vector<float> advect_delta_;
+  std::vector<float> advect_seed_delta_;
   std::vector<float> precip_buf_;
 };
 

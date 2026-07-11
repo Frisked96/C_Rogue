@@ -1,0 +1,12 @@
+1. Eliminate per‑thread copying of NoiseGen
+Every parallel step creates a copy of the full noise generator (NoiseGen local_noise = noise;). FastNoiseLite contains permutation tables (~1 KB) and copying it hundreds of times per substep adds measurable overhead.
+
+Solution: Pre‑seed one NoiseGen per worker thread and reference it by the thread index t already provided by parallel_for_2d.
+Then in every parallel loop, capture thread_noise_[t] by reference instead of copying
+Apply this to update_wind, step_precipitation, and the tree‑seed drop. The speed‑up will be most noticeable for high substep counts.
+2. Precompute pond depths in overland_flow_step
+The current code calls pond_depth(x,y) inside the inner neighbour loop, recalculating the same index and reading from Game_map repeatedly. Instead, precompute the water‑surface elevation (WSE) vector once before the three‑pass parallel sweep.
+In the outflow computation replace wse and neighbour WSE lookups with buffers.wse[i] and buffers.wse[ny*width+nx]. Also fetch flow_blockage once per cell and store in a temporary vector (or use the existing buffers struct). This eliminates thousands of redundant get_tile calls per substep and improves data locality.
+3. Parallelise the tree‑seed drop loop
+The seed‑drop loop (for y … for x …) is purely local and can be parallelised exactly like the other hydro steps. Just wrap it with parallel_for_2d. The climate add_seed_factor calls are already gather‑based (writing to cells_[idx(x,y)].seed_factor), but with parallel writes to different cells there is no conflict. So a simple parallelisation is safe
+The object loop that emits seeds (for (ObjectInstance* obj …)) may stay serial if the object count is moderate; if it becomes a bottleneck, you can accumulate seeds in per‑thread buffers and merge them afterward

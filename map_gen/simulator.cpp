@@ -78,7 +78,7 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
 
     // Spawn objects dynamically across different stages of the simulation
     if (proto_db && obj_mgr) {
-      if (year <= 50 && year % 10 == 0) {
+      if (year == 0) {
         ObjectSpawner::populate(game_map, *proto_db, *obj_mgr, seed + year,
                                 ground_z_);
       }
@@ -182,6 +182,49 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year,
   end = std::chrono::high_resolution_clock::now();
   step_timings_["Groundwater"] +=
       std::chrono::duration<double>(end - start).count();
+
+  // --- 7. Tree Seed Spread (Organic reproduction) ---
+  if (obj_mgr) {
+    start = std::chrono::high_resolution_clock::now();
+    
+    // 7a. Emit seeds
+    for (ObjectInstance* obj : obj_mgr->get_all_active()) {
+      if (obj && obj->vegetation) {
+         if (obj->vegetation->age >= 5 && obj->vegetation->age <= 15) {
+            int spawn_substep = (obj->uid * 7) % params_.substeps_per_year;
+            if (substep == spawn_substep) {
+               climate_.add_seed_factor(obj->x, obj->y, 0.5f);
+            }
+         }
+      }
+    }
+
+    // 7b. Drop and spawn
+    for (int y = 0; y < height_; ++y) {
+      for (int x = 0; x < width_; ++x) {
+        float sf = climate_.at(x, y).seed_factor;
+        if (sf > 0.05f) {
+           float blockage = game_map.get_surface(x, y).flow_blockage;
+           float wind_speed = std::sqrt(climate_.at(x,y).wind_u*climate_.at(x,y).wind_u + climate_.at(x,y).wind_v*climate_.at(x,y).wind_v);
+           float drop_prob = std::clamp(blockage * 0.1f + 0.01f - wind_speed * 0.005f, 0.0f, 1.0f);
+           
+           float rand_val = noise_.noise01((float)x * 123.45f + (float)year * 10.0f, (float)y * 54.32f + (float)substep * 5.0f);
+           if (rand_val < drop_prob * sf * 0.1f) {
+               int gz = ground_z_[y * width_ + x];
+               if (gz + 1 < depth_) {
+                   if (!obj_mgr->spatial().has_any(x, y, gz+1) && game_map.get_tile(x, y, gz+1).material == MaterialType::AIR) {
+                       // 2 is Pine Tree prototype, as seen in prototype_db
+                       obj_mgr->spawn(2, x, y, gz+1); 
+                       climate_.add_seed_factor(x, y, -0.1f);
+                   }
+               }
+           }
+        }
+      }
+    }
+    end = std::chrono::high_resolution_clock::now();
+    step_timings_["TreeSeeds"] += std::chrono::duration<double>(end - start).count();
+  }
 }
 
 // -----------------------------------------------------------------------
