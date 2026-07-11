@@ -57,6 +57,7 @@ public:
 private:
   hydro::Params params_;
   NoiseGen noise_;
+  std::vector<NoiseGen> thread_noise_;
 
   std::vector<int> ground_z_;
   std::vector<float> soil_variation_;

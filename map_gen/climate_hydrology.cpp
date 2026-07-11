@@ -13,17 +13,17 @@
 
 namespace hydro {
 
-namespace {
-constexpr float PI = 3.14159265358979323846f;
-
 // Cached hardware thread count — evaluated once, reused everywhere.
-inline int thread_count() {
+int thread_count() {
   static const int n = [] {
     const int c = (int)std::thread::hardware_concurrency();
     return c > 0 ? c : 1;
   }();
   return n;
 }
+
+namespace {
+constexpr float PI = 3.14159265358979323846f;
 
 // -----------------------------------------------------------------------
 // Minimal persistent thread pool to replace std::async. Avoids OS-level
@@ -97,10 +97,11 @@ inline ThreadPool &get_pool() {
   static ThreadPool pool(thread_count());
   return pool;
 }
+} // namespace
 
 // Helper for 2D grid parallelization. Passes thread_id, start_y, end_y to
 // lambda.
-template <typename Func> void parallel_for_2d(int height, Func f) {
+void parallel_for_2d(int height, std::function<void(int, int, int)> f) {
   ThreadPool &pool = get_pool();
   int num_threads = thread_count();
   int chunk_size = (height + num_threads - 1) / num_threads;
@@ -115,6 +116,7 @@ template <typename Func> void parallel_for_2d(int height, Func f) {
   pool.wait();
 }
 
+namespace {
 // Mutable reference into the map's tile storage, mirroring the
 // const_cast<Tile&>(get_tile(...)) pattern used by the original simulator
 // for in-place numeric edits (no material change -> no set_tile needed).
@@ -180,7 +182,7 @@ void ClimateSystem::init(int width, int height, const Params &params) {
 }
 
 void ClimateSystem::initialize(const std::vector<int> &ground_z,
-                               NoiseGen &noise) {
+                               std::vector<NoiseGen> &thread_noise) {
   for (int y = 0; y < h_; ++y) {
     for (int x = 0; x < w_; ++x) {
       ClimateCell &c = cells_[idx(x, y)];
@@ -193,11 +195,11 @@ void ClimateSystem::initialize(const std::vector<int> &ground_z,
       c.upslope = 0.0f;
     }
   }
-  update_wind(ground_z, noise, 0.0f);
+  update_wind(ground_z, thread_noise, 0.0f);
 }
 
 void ClimateSystem::update_wind(const std::vector<int> &ground_z,
-                                NoiseGen &noise, float season_phase) {
+                                std::vector<NoiseGen> &thread_noise, float season_phase) {
   float base_angle = season_phase * 2.0f * PI;
   float base_u = std::cos(base_angle) * 1.5f;
   float base_v = std::sin(base_angle) * 1.5f;
@@ -209,8 +211,8 @@ void ClimateSystem::update_wind(const std::vector<int> &ground_z,
   };
 
   parallel_for_2d(
-      h_, [this, base_u, base_v, elev, noise](int, int start_y, int end_y) {
-        NoiseGen local_noise = noise; // Thread-local copy
+      h_, [this, base_u, base_v, elev, &thread_noise](int tid, int start_y, int end_y) {
+        NoiseGen &local_noise = thread_noise[tid];
         for (int y = start_y; y < end_y; ++y) {
           for (int x = 0; x < w_; ++x) {
             float nu = local_noise.fbm2D((float)x * 0.015f + 1000.0f,
@@ -285,6 +287,9 @@ void ClimateSystem::update_temperature(const std::vector<int> &ground_z,
 void ClimateSystem::advect() {
   std::fill(advect_delta_.begin(), advect_delta_.end(), 0.0f);
   std::fill(advect_seed_delta_.begin(), advect_seed_delta_.end(), 0.0f);
+
+  float total_seed_before = 0.0f;
+  for (const auto &c : cells_) total_seed_before += c.seed_factor;
 
   // Gather-based advection: pulls mass from upwind neighbors.
   // This is perfectly thread-safe as cells only write to their own index.
@@ -390,13 +395,16 @@ void ClimateSystem::advect() {
   });
 
   // Apply advection delta
+  float total_seed_after = 0.0f;
   for (std::size_t i = 0; i < cells_.size(); ++i) {
     cells_[i].vapor = std::max(0.0f, advect_delta_[i]);
     cells_[i].seed_factor = std::max(0.0f, advect_seed_delta_[i]);
+    total_seed_after += cells_[i].seed_factor;
   }
+  escaped_seeds_ += std::max(0.0f, total_seed_before - total_seed_after);
 
   // Windward-boundary inflow (serial, very cheap)
-  // Seeds don't inflow from boundaries
+  // Vapor inflow
   for (int y = 0; y < h_; ++y) {
     ClimateCell &left = cells_[idx(0, y)];
     if (left.wind_u > 0.0f)
@@ -419,17 +427,42 @@ void ClimateSystem::advect() {
       top.vapor +=
           params_.boundary_relax * (params_.ocean_humidity - top.vapor);
   }
+
+  // Seed inflow
+  if (seed_inflow_rate_ > 0.0f) {
+    int inward_cells = 0;
+    for (int y = 0; y < h_; ++y) {
+      if (cells_[idx(0, y)].wind_u > 0.0f) inward_cells++;
+      if (cells_[idx(w_ - 1, y)].wind_u < 0.0f) inward_cells++;
+    }
+    for (int x = 0; x < w_; ++x) {
+      if (cells_[idx(x, 0)].wind_v > 0.0f) inward_cells++;
+      if (cells_[idx(x, h_ - 1)].wind_v < 0.0f) inward_cells++;
+    }
+    if (inward_cells > 0) {
+      float seed_per_cell = seed_inflow_rate_ / inward_cells;
+      for (int y = 0; y < h_; ++y) {
+        if (cells_[idx(0, y)].wind_u > 0.0f) cells_[idx(0, y)].seed_factor += seed_per_cell;
+        if (cells_[idx(w_ - 1, y)].wind_u < 0.0f) cells_[idx(w_ - 1, y)].seed_factor += seed_per_cell;
+      }
+      for (int x = 0; x < w_; ++x) {
+        if (cells_[idx(x, 0)].wind_v > 0.0f) cells_[idx(x, 0)].seed_factor += seed_per_cell;
+        if (cells_[idx(x, h_ - 1)].wind_v < 0.0f) cells_[idx(x, h_ - 1)].seed_factor += seed_per_cell;
+      }
+    }
+  }
+
   for (auto &c : cells_) {
     c.vapor = std::max(0.0f, c.vapor);
   }
 }
 
-const std::vector<float> &ClimateSystem::step_precipitation(NoiseGen &noise,
+const std::vector<float> &ClimateSystem::step_precipitation(std::vector<NoiseGen> &thread_noise,
                                                             float day_index) {
   std::fill(precip_buf_.begin(), precip_buf_.end(), 0.0f);
 
-  parallel_for_2d(h_, [this, day_index, &noise](int, int start_y, int end_y) {
-    NoiseGen local_noise = noise; // Thread-local copy
+  parallel_for_2d(h_, [this, day_index, &thread_noise](int tid, int start_y, int end_y) {
+    NoiseGen &local_noise = thread_noise[tid];
     for (int y = start_y; y < end_y; ++y) {
       for (int x = 0; x < w_; ++x) {
         ClimateCell &c = cells_[idx(x, y)];
@@ -794,6 +827,8 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
     buffers.outflow.assign(total_cells, 0.0f);
     buffers.inflow.assign(total_cells, 0.0f);
     buffers.best_idx.assign(total_cells, -1);
+    buffers.wse.assign(total_cells, 0.0f);
+    buffers.flow_blockage.assign(total_cells, 0.0f);
   } else {
     std::fill(buffers.outflow.begin(), buffers.outflow.end(), 0.0f);
     std::fill(buffers.inflow.begin(), buffers.inflow.end(), 0.0f);
@@ -810,6 +845,17 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
     return 0.0f;
   };
 
+  // Pass 0: Precompute WSE and flow_blockage
+  parallel_for_2d(height, [&](int, int start_y, int end_y) {
+    for (int y = start_y; y < end_y; ++y) {
+      for (int x = 0; x < width; ++x) {
+        int i = y * width + x;
+        buffers.wse[i] = (float)ground_z[i] + pond_depth(x, y);
+        buffers.flow_blockage[i] = map.get_surface(x, y).flow_blockage;
+      }
+    }
+  });
+
   static const int DX[8] = {1, -1, 0, 0, 1, 1, -1, -1};
   static const int DY[8] = {0, 0, 1, -1, 1, -1, 1, -1};
   static const float DIST[8] = {1.0f,        1.0f,        1.0f,
@@ -821,11 +867,10 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
     for (int y = start_y; y < end_y; ++y) {
       for (int x = 0; x < width; ++x) {
         int i = y * width + x;
-        float pd = pond_depth(x, y);
+        float wse = buffers.wse[i];
+        float pd = wse - (float)ground_z[i];
         if (pd <= 1e-5f)
           continue;
-
-        float wse = (float)ground_z[i] + pd;
 
         float best_diff = 0.0f;
         int best_idx = -1; // -1: nowhere, -2: offmap
@@ -837,8 +882,7 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
           if (offmap) {
             n_wse = (float)ground_z[i] - 1.0f;
           } else {
-            n_wse = (float)ground_z[(std::size_t)ny * width + nx] +
-                    pond_depth(nx, ny);
+            n_wse = buffers.wse[ny * width + nx];
           }
 
           float diff = (wse - n_wse) / DIST[d];
@@ -853,7 +897,7 @@ void overland_flow_step(Game_map &map, const std::vector<int> &ground_z,
         }
 
         if (best_diff > 0.0f) {
-          float blockage = map.get_surface(x, y).flow_blockage;
+          float blockage = buffers.flow_blockage[i];
           float flow_multiplier = std::max(0.01f, 1.0f - blockage);
           float flow = std::min(pd, p.overland_flow_fraction * best_diff *
                                         flow_multiplier);

@@ -40,6 +40,7 @@
 #include "../tile.hpp"
 #include <cstdint>
 #include <vector>
+#include <functional>
 
 // -----------------------------------------------------------------------
 // NoiseGen: thin wrapper around FastNoiseLite providing a high-level
@@ -115,6 +116,9 @@ private:
 class Game_map; // forward declaration only - full definition needed in the .cpp
 
 namespace hydro {
+
+int thread_count();
+void parallel_for_2d(int height, std::function<void(int tid, int start_y, int end_y)> f);
 
 // -----------------------------------------------------------------------
 // Tunable parameters. Defaults are chosen to be Courant-safe (no single
@@ -216,12 +220,12 @@ public:
   void set_params(const Params &params) { params_ = params; }
 
   // Seed wind, temperature and initial (50% RH) vapor fields.
-  void initialize(const std::vector<int> &ground_z, NoiseGen &noise);
+  void initialize(const std::vector<int> &ground_z, std::vector<NoiseGen> &thread_noise);
 
   // Recompute the wind field (prevailing seasonal direction + noise,
   // deflected toward valleys/contours over steep terrain). Cheap-ish;
   // called every `wind_update_interval` substeps.
-  void update_wind(const std::vector<int> &ground_z, NoiseGen &noise,
+  void update_wind(const std::vector<int> &ground_z, std::vector<NoiseGen> &thread_noise,
                    float season_phase);
 
   // Recompute near-surface air temperature from elevation + season.
@@ -235,7 +239,7 @@ public:
   // Orographic + convective precipitation. Consumes supersaturated vapor
   // (based on local temperature and orographic lift) and returns
   // precipitation depth (metres) per column for this substep.
-  const std::vector<float> &step_precipitation(NoiseGen &noise,
+  const std::vector<float> &step_precipitation(std::vector<NoiseGen> &thread_noise,
                                                float day_index);
 
   // Evapotranspiration step adds water back into the local vapor field.
@@ -246,6 +250,15 @@ public:
     if (x >= 0 && x < w_ && y >= 0 && y < h_) {
       cells_[idx(x, y)].seed_factor += amount;
     }
+  }
+
+  void start_new_year(int year, float min_seeds) {
+    float inflow = 0.0f;
+    if (year >= 5) {
+      inflow = min_seeds + 0.05f * escaped_seeds_;
+    }
+    escaped_seeds_ = 0.0f;
+    seed_inflow_rate_ = inflow / params_.substeps_per_year;
   }
 
   int width() const { return w_; }
@@ -271,6 +284,9 @@ private:
   std::vector<float> advect_delta_;
   std::vector<float> advect_seed_delta_;
   std::vector<float> precip_buf_;
+
+  float escaped_seeds_ = 0.0f;
+  float seed_inflow_rate_ = 0.0f;
 };
 
 // -----------------------------------------------------------------------
@@ -357,6 +373,8 @@ struct OverlandFlowBuffers {
   std::vector<float> outflow;
   std::vector<float> inflow;
   std::vector<int> best_idx;
+  std::vector<float> wse;
+  std::vector<float> flow_blockage;
 };
 
 // Step 4: D8 (8-direction) steepest-descent overland flow for surface ponds.

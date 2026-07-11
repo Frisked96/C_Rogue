@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <tuple>
 
 // -----------------------------------------------------------------------
 void MapSimulator::initialize(Game_map &game_map, int seed) {
@@ -17,6 +18,8 @@ void MapSimulator::initialize(Game_map &game_map, int seed) {
   depth_ = game_map.get_depth();
 
   noise_.set_seed((uint32_t)seed);
+  int tc = hydro::thread_count();
+  thread_noise_.assign(tc, NoiseGen(seed));
 
   // Terrain doesn't change during the simulation, so the heightmap and
   // per-column soil-texture variation are computed once up front.
@@ -25,7 +28,7 @@ void MapSimulator::initialize(Game_map &game_map, int seed) {
       hydro::compute_soil_variation(width_, height_, noise_, params_);
 
   climate_.init(width_, height_, params_);
-  climate_.initialize(ground_z_, noise_);
+  climate_.initialize(ground_z_, thread_noise_);
 
   groundwater_.init(width_, height_, params_);
   groundwater_.initialize(ground_z_, noise_);
@@ -62,6 +65,8 @@ void MapSimulator::run(Game_map &game_map, int seed, int num_years,
   // simulation length; tune via hydro::Params::substeps_per_year and/or
   // this argument if you need a faster/slower world-gen pass.
   for (int year = 0; year < num_years; ++year) {
+    climate_.start_new_year(year, 10.0f);
+
     for (int s = 0; s < params_.substeps_per_year; ++s) {
       simulate_substep(game_map, s, year, obj_mgr);
     }
@@ -109,13 +114,13 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year,
 
   // --- 1. Atmosphere ---
   if (substep % params_.wind_update_interval == 0) {
-    climate_.update_wind(ground_z_, noise_, season_phase);
+    climate_.update_wind(ground_z_, thread_noise_, season_phase);
   }
   climate_.update_temperature(ground_z_, season_phase);
   climate_.advect();
 
   const std::vector<float> &precip =
-      climate_.step_precipitation(noise_, day_index);
+      climate_.step_precipitation(thread_noise_, day_index);
 
   float step_rain = 0.0f;
   for (float p : precip)
@@ -200,26 +205,37 @@ void MapSimulator::simulate_substep(Game_map &game_map, int substep, int year,
     }
 
     // 7b. Drop and spawn
-    for (int y = 0; y < height_; ++y) {
-      for (int x = 0; x < width_; ++x) {
-        float sf = climate_.at(x, y).seed_factor;
-        if (sf > 0.05f) {
-           float blockage = game_map.get_surface(x, y).flow_blockage;
-           float wind_speed = std::sqrt(climate_.at(x,y).wind_u*climate_.at(x,y).wind_u + climate_.at(x,y).wind_v*climate_.at(x,y).wind_v);
-           float drop_prob = std::clamp(blockage * 0.1f + 0.01f - wind_speed * 0.005f, 0.0f, 1.0f);
-           
-           float rand_val = noise_.noise01((float)x * 123.45f + (float)year * 10.0f, (float)y * 54.32f + (float)substep * 5.0f);
-           if (rand_val < drop_prob * sf * 0.1f) {
-               int gz = ground_z_[y * width_ + x];
-               if (gz + 1 < depth_) {
-                   if (!obj_mgr->spatial().has_any(x, y, gz+1) && game_map.get_tile(x, y, gz+1).material == MaterialType::AIR) {
-                       // 2 is Pine Tree prototype, as seen in prototype_db
-                       obj_mgr->spawn(2, x, y, gz+1); 
-                       climate_.add_seed_factor(x, y, -0.1f);
-                   }
-               }
-           }
+    std::vector<std::vector<std::tuple<int, int, int>>> thread_spawns(hydro::thread_count());
+    
+    hydro::parallel_for_2d(height_, [&](int tid, int start_y, int end_y) {
+      NoiseGen &local_noise = thread_noise_[tid];
+      for (int y = start_y; y < end_y; ++y) {
+        for (int x = 0; x < width_; ++x) {
+          float sf = climate_.at(x, y).seed_factor;
+          if (sf > 0.05f) {
+             float blockage = game_map.get_surface(x, y).flow_blockage;
+             float wind_speed = std::sqrt(climate_.at(x,y).wind_u*climate_.at(x,y).wind_u + climate_.at(x,y).wind_v*climate_.at(x,y).wind_v);
+             float drop_prob = std::clamp(blockage * 0.1f + 0.01f - wind_speed * 0.005f, 0.0f, 1.0f);
+             
+             float rand_val = local_noise.noise01((float)x * 123.45f + (float)year * 10.0f, (float)y * 54.32f + (float)substep * 5.0f);
+             if (rand_val < drop_prob * sf * 0.1f) {
+                 int gz = ground_z_[y * width_ + x];
+                 if (gz + 1 < depth_) {
+                     if (!obj_mgr->spatial().has_any(x, y, gz+1) && game_map.get_tile(x, y, gz+1).material == MaterialType::AIR) {
+                         thread_spawns[tid].emplace_back(x, y, gz+1);
+                         climate_.add_seed_factor(x, y, -0.1f);
+                     }
+                 }
+             }
+          }
         }
+      }
+    });
+
+    for (const auto& spawns : thread_spawns) {
+      for (const auto& spawn : spawns) {
+        // 2 is Pine Tree prototype, as seen in prototype_db
+        obj_mgr->spawn(2, std::get<0>(spawn), std::get<1>(spawn), std::get<2>(spawn)); 
       }
     }
     end = std::chrono::high_resolution_clock::now();
